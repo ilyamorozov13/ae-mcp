@@ -20,6 +20,9 @@ function initializeMCPBridge() {
             commandsFolder.create();
         }
         
+        // Clear processed commands on initialization to allow re-processing
+        processedCommands = {};
+        
         return "success";
     } catch (e) {
         return "Error: " + e.toString();
@@ -42,8 +45,16 @@ function processCommands() {
             initializeMCPBridge();
         }
         
-        // Get all .js files in the commands folder
-        var files = commandsFolder.getFiles("*.js");
+        // Get all .json files in the commands folder (excluding .response files)
+        var allFiles = commandsFolder.getFiles("*.json");
+        var files = [];
+        
+        // Filter out response files
+        for (var i = 0; i < allFiles.length; i++) {
+            if (allFiles[i].name.indexOf(".response") === -1) {
+                files.push(allFiles[i]);
+            }
+        }
         
         for (var i = 0; i < files.length; i++) {
             var file = files[i];
@@ -54,26 +65,73 @@ function processCommands() {
             }
             
             try {
-                // Read and execute the command file
+                // Read the command file
                 file.open("r");
                 var content = file.read();
                 file.close();
                 
+                // Parse JSON to get the script
+                var commandData = JSON.parse(content);
+                var commandId = commandData.id;
+                var script = commandData.script;
+                
                 // Execute the command
                 app.beginUndoGroup("MCP Command: " + file.name);
                 try {
-                    eval(content);
-                    result.processed++;
-                    result.commands.push(file.name);
+                    // Execute the script and capture the result
+                    var commandResult = eval(script);
                     
-                    // Mark as processed
-                    processedCommands[file.name] = true;
+                    // Convert result to string if it's an object
+                    var resultToWrite = commandResult;
+                    if (typeof commandResult === "object" && commandResult !== null) {
+                        try {
+                            resultToWrite = JSON.stringify(commandResult);
+                        } catch (e) {
+                            resultToWrite = commandResult.toString();
+                        }
+                    }
                     
-                    // Archive the processed file
-                    archiveCommand(file);
+                    // Write response file
+                    var responseFile = new File(file.fsName + ".response");
+                    responseFile.encoding = "UTF-8";
+                    if (responseFile.open("w")) {
+                        responseFile.write(JSON.stringify({
+                            id: commandId,
+                            success: true,
+                            result: resultToWrite
+                        }, null, 2));
+                        responseFile.close();
+                        
+                        result.processed++;
+                        result.commands.push(file.name);
+                        
+                        // Mark as processed
+                        processedCommands[file.name] = true;
+                        
+                        // Archive the processed file (but not the response)
+                        archiveCommand(file);
+                    } else {
+                        throw new Error("Failed to open response file for writing");
+                    }
                 } catch (execError) {
+                    // Write error response
+                    var errorResponseFile = new File(file.fsName + ".response");
+                    errorResponseFile.encoding = "UTF-8";
+                    if (errorResponseFile.open("w")) {
+                        errorResponseFile.write(JSON.stringify({
+                            id: commandId,
+                            success: false,
+                            error: execError.toString()
+                        }, null, 2));
+                        errorResponseFile.close();
+                    }
+                    
                     result.errors++;
                     result.commands.push("ERROR in " + file.name + ": " + execError.toString());
+                    
+                    // Still mark as processed and archive even on error
+                    processedCommands[file.name] = true;
+                    archiveCommand(file);
                 } finally {
                     app.endUndoGroup();
                 }
@@ -97,35 +155,11 @@ function processCommands() {
  */
 function archiveCommand(file) {
     try {
-        // Create archive folder if it doesn't exist
-        var archiveFolder = new Folder(commandsFolder.fsName + "/processed");
-        if (!archiveFolder.exists) {
-            archiveFolder.create();
-        }
-        
-        // Create date-based subfolder
-        var date = new Date();
-        var dateStr = date.getFullYear() + "-" + 
-                     pad(date.getMonth() + 1) + "-" + 
-                     pad(date.getDate());
-        var dateFo
-        
-        var dateFolder = new Folder(archiveFolder.fsName + "/" + dateStr);
-        if (!dateFolder.exists) {
-            dateFolder.create();
-        }
-        
-        // Move file to archive with timestamp
-        var timestamp = date.getTime();
-        var newName = timestamp + "_" + file.name;
-        var newPath = dateFolder.fsName + "/" + newName;
-        
-        file.rename(newName);
-        file.changePath(newPath);
-        
-    } catch (e) {
-        // If archiving fails, just delete the file
+        // Simply delete the command file after processing
+        // The response file remains for the MCP server to read
         file.remove();
+    } catch (e) {
+        // If deletion fails, log it but continue
     }
 }
 
@@ -163,7 +197,7 @@ function pad(num) {
 function getProjectInfo() {
     var info = {
         hasProject: app.project !== null,
-        projectName: app.project ? app.project.file ? app.project.file.name : "Untitled Project" : "No Project",
+        projectName: app.project ? (app.project.file ? app.project.file.name : "Untitled Project") : "No Project",
         numItems: app.project ? app.project.numItems : 0,
         numComps: 0,
         numFootage: 0

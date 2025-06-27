@@ -53,6 +53,9 @@ export class ScriptGenerator {
     add_to_render_queue: (params: any) => this.generators.addToRenderQueue(params),
     start_render: (params: any) => this.generators.startRender(params),
     get_render_queue: (params: any) => this.generators.getRenderQueue(params),
+    batch_execute: (params: any) => this.generators.batchExecute(params),
+    batch_keyframes: (params: any) => this.generators.batchKeyframes(params),
+    batch_create_layers: (params: any) => this.generators.batchCreateLayers(params),
     
     // Original camelCase implementations
     createProject: (params: { name: string; settings?: any }) => `
@@ -628,6 +631,160 @@ export class ScriptGenerator {
         data: {
           numItems: app.project.renderQueue.numItems,
           items: items
+        }
+      };
+    `,
+    
+    batchExecute: (params: { commands: any[], sequential?: boolean }) => {
+      // For batch execute, we'll process each command individually
+      // The file bridge will handle them in parallel
+      throw new Error("batch_execute should be handled at the server level, not in script generation");
+    },
+    
+    batchKeyframes: (params: { compId: number, keyframes: any[] }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var results = [];
+      var keyframes = ${JSON.stringify(params.keyframes)};
+      
+      for (var i = 0; i < keyframes.length; i++) {
+        var kf = keyframes[i];
+        try {
+          var layer = comp.layer(kf.layerIndex);
+          if (!layer) {
+            results.push({success: false, error: "Layer " + kf.layerIndex + " not found"});
+            continue;
+          }
+          
+          // Property name normalization
+          var propertyMap = {
+            "position": "Position",
+            "scale": "Scale",
+            "rotation": "Rotation",
+            "opacity": "Opacity"
+          };
+          var propName = propertyMap[kf.property.toLowerCase()] || kf.property;
+          
+          var prop = layer.property(propName);
+          if (!prop) {
+            // Try under Transform
+            var transform = layer.property("Transform");
+            if (transform) {
+              prop = transform.property(propName);
+            }
+          }
+          
+          if (!prop) {
+            results.push({success: false, error: "Property " + propName + " not found on layer " + kf.layerIndex});
+            continue;
+          }
+          
+          // Fix zero scale values
+          var value = kf.value;
+          if (propName === "Scale" && value instanceof Array) {
+            for (var j = 0; j < value.length; j++) {
+              if (value[j] === 0) value[j] = 0.1;
+            }
+          }
+          
+          prop.setValueAtTime(kf.time, value);
+          results.push({success: true, layer: kf.layerIndex, property: propName, time: kf.time});
+          
+        } catch (e) {
+          results.push({success: false, error: e.toString(), layer: kf.layerIndex});
+        }
+      }
+      
+      return {
+        success: true,
+        data: {
+          total: keyframes.length,
+          successful: results.filter(function(r) { return r.success; }).length,
+          results: results
+        }
+      };
+    `,
+    
+    batchCreateLayers: (params: { compId: number, layers: any[] }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var results = [];
+      var layers = ${JSON.stringify(params.layers)};
+      
+      for (var i = 0; i < layers.length; i++) {
+        var layerDef = layers[i];
+        try {
+          var layer;
+          var type = layerDef.type.toLowerCase();
+          
+          switch(type) {
+            case "solid":
+              var color = layerDef.properties && layerDef.properties.color || [0, 0, 0];
+              layer = comp.layers.addSolid(color, layerDef.name, comp.width, comp.height, 1);
+              break;
+              
+            case "text":
+              var text = layerDef.properties && layerDef.properties.text || layerDef.name;
+              layer = comp.layers.addText(text);
+              layer.name = layerDef.name;
+              break;
+              
+            case "shape":
+              layer = comp.layers.addShape();
+              layer.name = layerDef.name;
+              break;
+              
+            case "null":
+              layer = comp.layers.addNull();
+              layer.name = layerDef.name;
+              break;
+              
+            case "adjustment":
+              layer = comp.layers.addSolid([0, 0, 0], layerDef.name, comp.width, comp.height, 1);
+              layer.adjustmentLayer = true;
+              break;
+              
+            default:
+              throw new Error("Unknown layer type: " + type);
+          }
+          
+          // Apply initial properties if provided
+          if (layerDef.properties) {
+            var props = layerDef.properties;
+            if (props.position) layer.property("Position").setValue(props.position);
+            if (props.scale) layer.property("Scale").setValue(props.scale);
+            if (props.rotation) layer.property("Rotation").setValue(props.rotation);
+            if (props.opacity) layer.property("Opacity").setValue(props.opacity);
+          }
+          
+          results.push({
+            success: true,
+            name: layer.name,
+            index: layer.index,
+            type: type
+          });
+          
+        } catch (e) {
+          results.push({
+            success: false,
+            error: e.toString(),
+            name: layerDef.name
+          });
+        }
+      }
+      
+      return {
+        success: true,
+        data: {
+          total: layers.length,
+          successful: results.filter(function(r) { return r.success; }).length,
+          results: results
         }
       };
     `

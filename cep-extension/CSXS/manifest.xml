@@ -5,8 +5,8 @@
 	</ExtensionList>
 	<ExecutionEnvironment>
 		<HostList>
-			<!-- After Effects -->
-			<Host Name="AEFT" Version="22.0" />
+			<!-- After Effects - Support versions 2022 through 2025+ -->
+			<Host Name="AEFT" Version="[22.0,99.9]" />
 		</HostList>
 		<LocaleList>
 			<Locale Code="All" />
