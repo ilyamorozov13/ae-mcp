@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="11.0" ExtensionBundleId="com.aemcp.bridge" ExtensionBundleVersion="1.0.0" ExtensionBundleName="AE MCP Bridge" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<ExtensionList>
+		<Extension Id="com.aemcp.bridge.panel" Version="1.0.0" />
+	</ExtensionList>
+	<ExecutionEnvironment>
+		<HostList>
+			<!-- After Effects -->
+			<Host Name="AEFT" Version="22.0" />
+		</HostList>
+		<LocaleList>
+			<Locale Code="All" />
+		</LocaleList>
+		<RequiredRuntimeList>
+			<RequiredRuntime Name="CSXS" Version="11.0" />
+		</RequiredRuntimeList>
+	</ExecutionEnvironment>
+	<DispatchInfoList>
+		<Extension Id="com.aemcp.bridge.panel">
+			<DispatchInfo>
+				<Resources>
+					<MainPath>./index.html</MainPath>
+					<ScriptPath>./jsx/host.jsx</ScriptPath>
+				</Resources>
+				<Lifecycle>
+					<AutoVisible>true</AutoVisible>
+				</Lifecycle>
+				<UI>
+					<Type>Panel</Type>
+					<Menu>AE MCP Bridge</Menu>
+					<Geometry>
+						<Size>
+							<Height>600</Height>
+							<Width>400</Width>
+						</Size>
+						<MinSize>
+							<Height>400</Height>
+							<Width>300</Width>
+						</MinSize>
+					</Geometry>
+					<Icons>
+						<Icon Type="Normal">./icons/icon.png</Icon>
+						<Icon Type="RollOver">./icons/icon.png</Icon>
+						<Icon Type="DarkNormal">./icons/icon.png</Icon>
+						<Icon Type="DarkRollOver">./icons/icon.png</Icon>
+					</Icons>
+				</UI>
+			</DispatchInfo>
+		</Extension>
+	</DispatchInfoList>
+</ExtensionManifest>
