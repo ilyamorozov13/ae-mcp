@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "adobe-after-effects": {
+      "command": "node",
+      "args": ["/path/to/ae-mcp/dist/index.js"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "AE_BRIDGE_PORT": "8080",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}
