@@ -166,7 +166,7 @@ class StdioMCPServer {
     try {
       // Connect to AE bridge if not connected
       await this.communicator.connect(
-        parseInt(process.env.AE_BRIDGE_PORT || '8080'),
+        parseInt(process.env.AE_BRIDGE_PORT || '8090'),
         'localhost'
       );
       
@@ -224,7 +224,7 @@ class StdioMCPServer {
     
     try {
       await this.communicator.connect(
-        parseInt(process.env.AE_BRIDGE_PORT || '8080'),
+        parseInt(process.env.AE_BRIDGE_PORT || '8090'),
         'localhost'
       );
       
@@ -265,7 +265,7 @@ class StdioMCPServer {
 
   start() {
     logger.info('Adobe After Effects MCP server started in stdio mode');
-    logger.info(`Expecting AE bridge on port ${process.env.AE_BRIDGE_PORT || '8080'}`);
+    logger.info(`Expecting AE bridge on port ${process.env.AE_BRIDGE_PORT || '8090'}`);
   }
 }
 

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.aemcp.bridge" ExtensionBundleVersion="1.0.0"
+<ExtensionManifest Version="9.0" ExtensionBundleId="com.aemcp.bridge" ExtensionBundleVersion="1.0.0"
 		ExtensionBundleName="AE MCP Bridge" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<ExtensionList>
 		<Extension Id="com.aemcp.bridge.panel" Version="1.0.0" />
 	</ExtensionList>
 	<ExecutionEnvironment>
 		<HostList>
-			<!-- After Effects CC 2020 and newer -->
+			<!-- After Effects 2020 and newer -->
 			<Host Name="AEFT" Version="17.0" />
 		</HostList>
 		<LocaleList>

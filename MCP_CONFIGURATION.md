@@ -27,7 +27,7 @@ Add to your Claude Desktop configuration file:
       "command": "node",
       "args": ["/absolute/path/to/ae-mcp/dist/stdio-server.js"],
       "env": {
-        "AE_BRIDGE_PORT": "8080",
+        "AE_BRIDGE_PORT": "8090",
         "LOG_LEVEL": "info"
       }
     }
@@ -46,7 +46,7 @@ Add to your Cline MCP settings:
     "args": ["/absolute/path/to/ae-mcp/dist/index.js"],
     "env": {
       "MCP_MODE": "stdio",
-      "AE_BRIDGE_PORT": "8080"
+      "AE_BRIDGE_PORT": "8090"
     }
   }
 }
@@ -62,7 +62,7 @@ For other MCP clients, use this configuration format:
   "command": "node /absolute/path/to/ae-mcp/dist/index.js",
   "env": {
     "MCP_MODE": "stdio",
-    "AE_BRIDGE_PORT": "8080"
+    "AE_BRIDGE_PORT": "8090"
   }
 }
 ```
@@ -77,7 +77,7 @@ For other MCP clients, use this configuration format:
 
 1. **MCP Client** launches the server using the configured command
 2. **MCP Server** starts and waits for stdio communication
-3. **CEP Extension** must be connected in After Effects (port 8080)
+3. **CEP Extension** must be connected in After Effects (port 8090)
 4. **Commands** flow: Client → Server → CEP → After Effects
 
 ## Troubleshooting
@@ -89,7 +89,7 @@ For other MCP clients, use this configuration format:
 
 ### Can't connect to After Effects
 - Verify the CEP extension is installed and running
-- Check the bridge port matches (default: 8080)
+- Check the bridge port matches (default: 8090)
 - Ensure "Allow Scripts to Write Files and Access Network" is enabled in AE
 
 ### Commands fail

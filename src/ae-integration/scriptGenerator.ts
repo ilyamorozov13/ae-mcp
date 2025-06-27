@@ -35,6 +35,23 @@ export class ScriptGenerator {
   }
   
   private generators: { [key: string]: (params: any) => string } = {
+    // Map underscore names to camelCase implementations
+    create_project: (params: any) => this.generators.createProject(params),
+    open_project: (params: any) => this.generators.openProject(params),
+    save_project: (params: any) => this.generators.saveProject(params),
+    get_project_info: (params: any) => this.generators.getProjectInfo(params),
+    create_composition: (params: any) => this.generators.createComposition(params),
+    modify_composition: (params: any) => this.generators.modifyComposition(params),
+    list_compositions: (params: any) => this.generators.listCompositions(params),
+    add_solid_layer: (params: any) => this.generators.addSolidLayer(params),
+    add_text_layer: (params: any) => this.generators.addTextLayer(params),
+    modify_layer_properties: (params: any) => this.generators.modifyLayerProperties(params),
+    set_keyframe: (params: any) => this.generators.setKeyframe(params),
+    add_to_render_queue: (params: any) => this.generators.addToRenderQueue(params),
+    start_render: (params: any) => this.generators.startRender(params),
+    get_render_queue: (params: any) => this.generators.getRenderQueue(params),
+    
+    // Original camelCase implementations
     createProject: (params: { name: string; settings?: any }) => `
       var project = app.newProject();
       if (project) {
