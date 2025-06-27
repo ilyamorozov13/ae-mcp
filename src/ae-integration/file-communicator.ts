@@ -25,20 +25,11 @@ export class AEFileCommunicator {
     this.logger = logger;
     this.scriptGenerator = new ScriptGenerator();
     
-    // Get temp directory and normalize path
-    let tempDir = os.tmpdir();
+    // Use Documents folder for better write permissions
+    const homeDir = os.homedir();
+    this.commandsDir = path.join(homeDir, 'Documents', 'ae-mcp-commands');
     
-    // On macOS, handle /var vs /private/var
-    if (tempDir.startsWith('/var') && !tempDir.startsWith('/private')) {
-      // Check if /private/var version exists
-      const privateVersion = '/private' + tempDir;
-      if (fs.existsSync(privateVersion)) {
-        tempDir = privateVersion;
-        this.logger.info('Using /private prefix for macOS compatibility');
-      }
-    }
-    
-    this.commandsDir = path.join(tempDir, 'ae-mcp-commands');
+    this.logger.info('Using Documents folder for file-based communication');
     
     // Ensure commands directory exists
     if (!fs.existsSync(this.commandsDir)) {
@@ -74,9 +65,32 @@ export class AEFileCommunicator {
         const filePath = path.join(this.commandsDir, file);
         
         try {
+          // Check file size to ensure it's been written
+          const stats = fs.statSync(filePath);
+          if (stats.size === 0) {
+            // File is empty, skip for now
+            continue;
+          }
+          
+          // Add small delay to ensure file is fully written
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
           // Read response
           const content = fs.readFileSync(filePath, 'utf8');
-          const response = JSON.parse(content);
+          if (!content || content.trim().length === 0) {
+            this.logger.warn(`Empty response file: ${file}`);
+            continue;
+          }
+          
+          let response;
+          try {
+            response = JSON.parse(content);
+          } catch (parseError) {
+            this.logger.error(`Invalid JSON in response ${file}: ${content.substring(0, 100)}`);
+            // Delete corrupted file
+            fs.unlinkSync(filePath);
+            continue;
+          }
           
           // Find pending command
           const pending = this.pendingCommands.get(response.id);
@@ -132,6 +146,14 @@ export class AEFileCommunicator {
       const timeout = setTimeout(() => {
         this.pendingCommands.delete(id);
         
+        // Log timeout details
+        this.logger.error(`Command timeout for ${command}:`, {
+          commandFile,
+          responseFile,
+          fileExists: fs.existsSync(commandFile),
+          responseExists: fs.existsSync(responseFile)
+        });
+        
         // Clean up files
         try {
           if (fs.existsSync(commandFile)) fs.unlinkSync(commandFile);
@@ -139,7 +161,7 @@ export class AEFileCommunicator {
         } catch (e) {}
         
         reject(new Error(`Command timeout: ${command}`));
-      }, 30000); // 30 second timeout
+      }, 60000); // 60 second timeout
       
       // Store pending command
       this.pendingCommands.set(id, { 
@@ -154,7 +176,11 @@ export class AEFileCommunicator {
       try {
         const commandData = { id, script };
         fs.writeFileSync(commandFile, JSON.stringify(commandData, null, 2));
-        this.logger.debug(`Wrote command file: ${commandFile}`);
+        this.logger.info(`Wrote command file: ${path.basename(commandFile)} for ${command}`);
+        
+        // Verify file was written
+        const stats = fs.statSync(commandFile);
+        this.logger.debug(`Command file size: ${stats.size} bytes`);
       } catch (error) {
         clearTimeout(timeout);
         this.pendingCommands.delete(id);

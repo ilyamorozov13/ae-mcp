@@ -43,8 +43,11 @@ export class ScriptGenerator {
     create_composition: (params: any) => this.generators.createComposition(params),
     modify_composition: (params: any) => this.generators.modifyComposition(params),
     list_compositions: (params: any) => this.generators.listCompositions(params),
+    get_composition_info: (params: any) => this.generators.getCompositionInfo(params),
     add_solid_layer: (params: any) => this.generators.addSolidLayer(params),
     add_text_layer: (params: any) => this.generators.addTextLayer(params),
+    add_shape_layer: (params: any) => this.generators.addShapeLayer(params),
+    create_layer: (params: any) => this.generators.createLayer(params),
     modify_layer_properties: (params: any) => this.generators.modifyLayerProperties(params),
     set_keyframe: (params: any) => this.generators.setKeyframe(params),
     add_to_render_queue: (params: any) => this.generators.addToRenderQueue(params),
@@ -247,6 +250,46 @@ export class ScriptGenerator {
       };
     `,
     
+    getCompositionInfo: (params: { compId: number }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      // Get layer information
+      var layers = [];
+      for (var i = 1; i <= comp.numLayers; i++) {
+        var layer = comp.layer(i);
+        layers.push({
+          index: i,
+          name: layer.name,
+          locked: layer.locked,
+          shy: layer.shy,
+          solo: layer.solo,
+          startTime: layer.startTime,
+          inPoint: layer.inPoint,
+          outPoint: layer.outPoint
+        });
+      }
+      
+      return {
+        success: true,
+        data: {
+          id: comp.id,
+          name: comp.name,
+          width: comp.width,
+          height: comp.height,
+          pixelAspect: comp.pixelAspect,
+          duration: comp.duration,
+          frameRate: comp.frameRate,
+          time: comp.time,
+          bgColor: comp.bgColor,
+          numLayers: comp.numLayers,
+          layers: layers
+        }
+      };
+    `,
+    
     addSolidLayer: (params: {
       compId: number;
       name?: string;
@@ -298,6 +341,73 @@ export class ScriptGenerator {
       };
     `,
     
+    addShapeLayer: (params: {
+      compId: number;
+      name?: string;
+    }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var layer = comp.layers.addShape();
+      ${params.name ? `layer.name = "${this.escapeString(params.name)}";` : ''}
+      
+      return {
+        success: true,
+        data: {
+          index: layer.index,
+          name: layer.name
+        }
+      };
+    `,
+    
+    createLayer: (params: {
+      compId: number;
+      type: string;
+      name?: string;
+      color?: number[];
+      text?: string;
+    }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var layer;
+      var type = "${params.type}".toLowerCase();
+      
+      switch(type) {
+        case "solid":
+          var color = ${params.color ? `[${params.color.join(',')}]` : '[0, 0, 0]'};
+          layer = comp.layers.addSolid(color, "${params.name || 'Solid'}", comp.width, comp.height, 1);
+          break;
+        case "text":
+          layer = comp.layers.addText("${this.escapeString(params.text || 'Text')}");
+          ${params.name ? `layer.name = "${this.escapeString(params.name)}";` : ''}
+          break;
+        case "shape":
+          layer = comp.layers.addShape();
+          ${params.name ? `layer.name = "${this.escapeString(params.name)}";` : ''}
+          break;
+        case "null":
+          layer = comp.layers.addNull();
+          ${params.name ? `layer.name = "${this.escapeString(params.name)}";` : ''}
+          break;
+        default:
+          throw new Error("Unknown layer type: " + type);
+      }
+      
+      return {
+        success: true,
+        data: {
+          index: layer.index,
+          name: layer.name,
+          type: type
+        }
+      };
+    `,
+    
     modifyLayerProperties: (params: {
       compId: number;
       layerIndex: number;
@@ -338,7 +448,13 @@ export class ScriptGenerator {
       property: string;
       time: number;
       value: any;
-    }) => `
+    }) => {
+      // Build the time assignment based on whether time is provided
+      const timeAssignment = params.time !== undefined && params.time !== null 
+        ? `var time = ${params.time};`
+        : `var time = comp.time;`;
+      
+      return `
       var comp = app.project.itemByID(${params.compId});
       if (!comp || !(comp instanceof CompItem)) {
         throw new Error("Composition not found");
@@ -349,22 +465,114 @@ export class ScriptGenerator {
         throw new Error("Layer not found");
       }
       
-      var prop = layer.property("${this.escapeString(params.property)}");
+      // Get time value - use provided time or current comp time
+      ${timeAssignment}
+      
+      // Debug output
+      $.writeln("Time assignment: ${timeAssignment}");
+      $.writeln("Time value after assignment: " + time);
+      $.writeln("Time type: " + typeof time);
+      $.writeln("Comp time: " + comp.time);
+      
+      // Normalize property name - AE uses specific casing
+      var propertyName = "${this.escapeString(params.property)}";
+      var propertyMap = {
+        "position": "Position",
+        "scale": "Scale", 
+        "rotation": "Rotation",
+        "opacity": "Opacity"
+      };
+      
+      // Use mapped name if available, otherwise use as-is
+      var normalizedProperty = propertyMap[propertyName.toLowerCase()] || propertyName;
+      
+      var prop = layer.property(normalizedProperty);
       if (!prop) {
-        throw new Error("Property not found: ${this.escapeString(params.property)}");
+        // Try Transform group for transform properties
+        if (["Position", "Scale", "Rotation"].indexOf(normalizedProperty) !== -1) {
+          var transform = layer.property("Transform");
+          if (transform) {
+            prop = transform.property(normalizedProperty);
+          }
+        }
+        
+        if (!prop) {
+          throw new Error("Property not found: " + normalizedProperty + " (original: " + propertyName + ")");
+        }
       }
       
-      prop.setValueAtTime(${params.time}, ${Array.isArray(params.value) ? `[${params.value.join(',')}]` : params.value});
+      // Check if property can have keyframes
+      if (!prop.canVaryOverTime) {
+        throw new Error("Property cannot be keyframed: ${this.escapeString(params.property)}");
+      }
+      
+      // Get value
+      var value = ${params.value !== undefined && params.value !== null 
+        ? (Array.isArray(params.value) ? `[${params.value.join(',')}]` : params.value) 
+        : 'prop.value'};
+      
+      $.writeln("Value: " + value);
+      $.writeln("Value type: " + typeof value);
+      $.writeln("Is array: " + (value instanceof Array));
+      if (value instanceof Array) {
+        $.writeln("Array length: " + value.length);
+        $.writeln("Array contents: [" + value.join(", ") + "]");
+      }
+      
+      // Final validation before calling setValueAtTime
+      if (time === undefined || time === null) {
+        throw new Error("Time is still undefined after all checks!");
+      }
+      
+      if (value === undefined || value === null) {
+        throw new Error("Value is undefined!");
+      }
+      
+      // Validate array values for Position, Scale
+      var arrayProps = ["Position", "Scale"];
+      if (arrayProps.indexOf(normalizedProperty) !== -1) {
+        if (!(value instanceof Array)) {
+          throw new Error(normalizedProperty + " requires an array value, got: " + typeof value);
+        }
+        if (value.length < 2 || value.length > 3) {
+          throw new Error(normalizedProperty + " requires 2 or 3 values, got " + value.length + ": [" + value.join(", ") + "]");
+        }
+        
+        // Prevent zero scale values
+        if (normalizedProperty === "Scale") {
+          for (var i = 0; i < value.length; i++) {
+            if (value[i] === 0) {
+              $.writeln("WARNING: Replacing zero scale value with 0.1");
+              value[i] = 0.1; // Use 0.1% instead of 0%
+            }
+          }
+        }
+      }
+      
+      try {
+        // Ensure time is a number
+        var numTime = parseFloat(time);
+        if (isNaN(numTime)) {
+          throw new Error("Time is not a valid number: " + time);
+        }
+        
+        $.writeln("Calling setValueAtTime(" + numTime + ", [" + value + "])");
+        prop.setValueAtTime(numTime, value);
+      } catch (e) {
+        throw new Error("Failed to set keyframe at time " + time + " with value " + value + ": " + e.toString());
+      }
       
       return {
         success: true,
         data: {
           property: "${this.escapeString(params.property)}",
-          time: ${params.time},
+          time: time,
+          value: value,
           numKeys: prop.numKeys
         }
       };
-    `,
+    `;
+    },
     
     addToRenderQueue: (params: {
       compId: number;
