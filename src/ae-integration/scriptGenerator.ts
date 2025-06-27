@@ -468,11 +468,7 @@ export class ScriptGenerator {
       // Get time value - use provided time or current comp time
       ${timeAssignment}
       
-      // Debug output
-      $.writeln("Time assignment: ${timeAssignment}");
-      $.writeln("Time value after assignment: " + time);
-      $.writeln("Time type: " + typeof time);
-      $.writeln("Comp time: " + comp.time);
+      // Time validation will happen later
       
       // Normalize property name - AE uses specific casing
       var propertyName = "${this.escapeString(params.property)}";
@@ -511,13 +507,7 @@ export class ScriptGenerator {
         ? (Array.isArray(params.value) ? `[${params.value.join(',')}]` : params.value) 
         : 'prop.value'};
       
-      $.writeln("Value: " + value);
-      $.writeln("Value type: " + typeof value);
-      $.writeln("Is array: " + (value instanceof Array));
-      if (value instanceof Array) {
-        $.writeln("Array length: " + value.length);
-        $.writeln("Array contents: [" + value.join(", ") + "]");
-      }
+      // Removed debug output that uses string concatenation
       
       // Final validation before calling setValueAtTime
       if (time === undefined || time === null) {
@@ -542,7 +532,7 @@ export class ScriptGenerator {
         if (normalizedProperty === "Scale") {
           for (var i = 0; i < value.length; i++) {
             if (value[i] === 0) {
-              $.writeln("WARNING: Replacing zero scale value with 0.1");
+              // Replace zero with small value to avoid divide by zero
               value[i] = 0.1; // Use 0.1% instead of 0%
             }
           }
@@ -556,7 +546,7 @@ export class ScriptGenerator {
           throw new Error("Time is not a valid number: " + time);
         }
         
-        $.writeln("Calling setValueAtTime(" + numTime + ", [" + value + "])");
+        // Remove debug line that contains string concatenation with + that might be seen as division
         prop.setValueAtTime(numTime, value);
       } catch (e) {
         throw new Error("Failed to set keyframe at time " + time + " with value " + value + ": " + e.toString());
