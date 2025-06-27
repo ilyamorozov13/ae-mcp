@@ -1,0 +1,23 @@
+{
+  "name": "ae-mcp-bridge",
+  "version": "1.0.0",
+  "description": "AE MCP Bridge - CEP Extension for Adobe After Effects",
+  "main": "index.html",
+  "keywords": [
+    "adobe",
+    "after-effects",
+    "cep",
+    "extension",
+    "mcp",
+    "bridge"
+  ],
+  "author": "AE MCP Bridge",
+  "license": "MIT",
+  "cep": {
+    "version": "11.0",
+    "host": {
+      "app": "AEFT",
+      "minVersion": "22.0"
+    }
+  }
+}
