@@ -14,5 +14,15 @@ export const helpers: ScriptGeneratorHelpers = {
     if (value === undefined) return 'undefined';
     if (value === null) return 'null';
     return JSON.stringify(value);
+  },
+  
+  // ES3-safe conditional code generation
+  conditional: (condition: boolean | undefined | null, trueCode: string, falseCode: string = ''): string => {
+    return condition ? trueCode : falseCode;
+  },
+  
+  // ES3-safe value assignment
+  valueOrDefault: (value: any, defaultValue: any): string => {
+    return value !== undefined && value !== null ? helpers.stringify(value) : helpers.stringify(defaultValue);
   }
 };

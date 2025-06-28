@@ -3,17 +3,14 @@ import { helpers } from './helpers.js';
 
 export const utilityGenerators: ScriptGeneratorModule = {
   ping: () => `
-    function pad(num) {
-      return (num < 10 ? "0" : "") + num;
-    }
-    
     var now = new Date();
-    var timestamp = now.getFullYear() + "-" + 
-                   pad(now.getMonth() + 1) + "-" + 
-                   pad(now.getDate()) + "T" + 
-                   pad(now.getHours()) + ":" + 
-                   pad(now.getMinutes()) + ":" + 
-                   pad(now.getSeconds()) + "Z";
+    var timestamp = now.getFullYear() + '-' + 
+                   ('0' + (now.getMonth() + 1)).slice(-2) + '-' + 
+                   ('0' + now.getDate()).slice(-2) + 'T' + 
+                   ('0' + now.getHours()).slice(-2) + ':' + 
+                   ('0' + now.getMinutes()).slice(-2) + ':' + 
+                   ('0' + now.getSeconds()).slice(-2) + '.' + 
+                   ('00' + now.getMilliseconds()).slice(-3) + 'Z';
     
     return {
       success: true,

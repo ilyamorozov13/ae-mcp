@@ -94,6 +94,11 @@ export class AEFileCommunicator {
           let retries = 3;
           while (retries > 0) {
             try {
+              // Check if file still exists before reading
+              if (!fs.existsSync(filePath)) {
+                this.logger.debug(`Response file no longer exists: ${file}`);
+                break;
+              }
               content = fs.readFileSync(filePath, 'utf8');
               break;
             } catch (readErr) {
@@ -174,8 +179,13 @@ export class AEFileCommunicator {
             // Clean up orphaned response
             fs.unlinkSync(filePath);
           }
-        } catch (error) {
-          this.logger.error(`Error processing response ${file}:`, error);
+        } catch (error: any) {
+          // Handle ENOENT errors more gracefully
+          if (error.code === 'ENOENT') {
+            this.logger.debug(`Response file was deleted before processing: ${file}`);
+          } else {
+            this.logger.error(`Error processing response ${file}:`, error);
+          }
         }
       }
     } catch (error) {
@@ -242,6 +252,11 @@ export class AEFileCommunicator {
       // Write command file
       try {
         const commandData = { id, script };
+        
+        // Log the script for debugging
+        this.logger.debug(`Generated script for ${command}:`);
+        this.logger.debug(script);
+        
         fs.writeFileSync(commandFile, JSON.stringify(commandData, null, 2));
         this.logger.info(`Wrote command file: ${path.basename(commandFile)} for ${command}`);
         

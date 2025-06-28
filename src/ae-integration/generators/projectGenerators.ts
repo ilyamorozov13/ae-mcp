@@ -3,20 +3,19 @@ import { helpers } from './helpers.js';
 
 export const projectGenerators: ScriptGeneratorModule = {
   createProject: (params: { name: string; settings?: any }) => `
-    app.newProject();
-    
-    var project = app.project;
-    ${params.settings && params.settings.frameRate ? `
-      // Default frame rate will be used for new comps: ${params.settings.frameRate}
-    ` : ''}
-    
-    return {
-      success: true,
-      data: {
-        name: "${helpers.escapeString(params.name)}",
-        file: project.file ? project.file.fsName : null
-      }
-    };
+    var project = app.newProject();
+    if (project) {
+      project.name = "${helpers.escapeString(params.name)}";
+      return {
+        success: true,
+        data: {
+          name: project.name,
+          file: project.file ? project.file.fsName : null,
+          numItems: project.numItems
+        }
+      };
+    }
+    throw new Error("Failed to create project");
   `,
   
   openProject: (params: { filePath: string }) => `

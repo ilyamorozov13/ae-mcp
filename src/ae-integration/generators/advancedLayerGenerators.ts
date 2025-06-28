@@ -57,10 +57,10 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     light.property("Light Options").property("Light Type").setValue(lightType);
     
     // Set color
-    ${params.color ? `light.property("Light Options").property("Color").setValue([${params.color.join(',')}]);` : ''}
+    ` + (params.color ? `light.property("Light Options").property("Color").setValue([${params.color.join(',')}]);` : '') + `
     
     // Set intensity
-    ${params.intensity ? `light.property("Light Options").property("Intensity").setValue(${params.intensity});` : ''}
+    ` + (params.intensity ? `light.property("Light Options").property("Intensity").setValue(${params.intensity});` : '') + `
     
     return {
       success: true,
@@ -71,7 +71,9 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     };
   `,
   
-  setLayerParent: (params: { compId: number; childLayerIndex: number; parentLayerIndex?: number }) => `
+  setLayerParent: (params: { compId: number; childLayerIndex: number; parentLayerIndex?: number }) => {
+    // ES3-compatible script generation
+    let script = `
     var comp = app.project.itemByID(${params.compId});
     if (!comp || !(comp instanceof CompItem)) {
       throw new Error("Composition not found");
@@ -81,17 +83,23 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     if (!childLayer) {
       throw new Error("Child layer not found");
     }
+    `;
     
-    ${params.parentLayerIndex != null ? `
+    if (params.parentLayerIndex != null) {
+      script += `
       var parentLayer = comp.layer(${params.parentLayerIndex});
       if (!parentLayer) {
         throw new Error("Parent layer not found");
       }
       childLayer.parent = parentLayer;
-    ` : `
+      `;
+    } else {
+      script += `
       childLayer.parent = null;
-    `}
+      `;
+    }
     
+    script += `
     return {
       success: true,
       data: {
@@ -100,7 +108,10 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
         parentIndex: ${params.parentLayerIndex != null ? params.parentLayerIndex : 'null'}
       }
     };
-  `,
+    `;
+    
+    return script;
+  },
   
   setLayerBlendMode: (params: { compId: number; layerIndex: number; blendMode: string }) => `
     var comp = app.project.itemByID(${params.compId});
@@ -202,10 +213,10 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       throw new Error("Layer not found");
     }
     
-    ${params.visible !== undefined ? `layer.enabled = ${params.visible};` : ''}
-    ${params.solo !== undefined ? `layer.solo = ${params.solo};` : ''}
-    ${params.shy !== undefined ? `layer.shy = ${params.shy};` : ''}
-    ${params.locked !== undefined ? `layer.locked = ${params.locked};` : ''}
+    ` + (params.visible !== undefined ? `layer.enabled = ${params.visible};` : '') + `
+    ` + (params.solo !== undefined ? `layer.solo = ${params.solo};` : '') + `
+    ` + (params.shy !== undefined ? `layer.shy = ${params.shy};` : '') + `
+    ` + (params.locked !== undefined ? `layer.locked = ${params.locked};` : '') + `
     
     return {
       success: true,
@@ -281,12 +292,12 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       throw new Error("Layer is not a 3D layer");
     }
     
-    ${params.properties.orientation ? `layer.property("Orientation").setValue([${params.properties.orientation.join(',')}]);` : ''}
-    ${params.properties.xRotation !== undefined ? `layer.property("X Rotation").setValue(${params.properties.xRotation});` : ''}
-    ${params.properties.yRotation !== undefined ? `layer.property("Y Rotation").setValue(${params.properties.yRotation});` : ''}
-    ${params.properties.zRotation !== undefined ? `layer.property("Z Rotation").setValue(${params.properties.zRotation});` : ''}
+    ` + (params.properties.orientation ? `layer.property("Orientation").setValue([${params.properties.orientation.join(',')}]);` : '') + `
+    ` + (params.properties.xRotation !== undefined ? `layer.property("X Rotation").setValue(${params.properties.xRotation});` : '') + `
+    ` + (params.properties.yRotation !== undefined ? `layer.property("Y Rotation").setValue(${params.properties.yRotation});` : '') + `
+    ` + (params.properties.zRotation !== undefined ? `layer.property("Z Rotation").setValue(${params.properties.zRotation});` : '') + `
     
-    ${params.properties.materialOptions ? `
+    ` + (params.properties.materialOptions ? `
       var materialOptions = layer.property("Material Options");
       var options = ${JSON.stringify(params.properties.materialOptions)};
       
@@ -311,7 +322,7 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       if (options.shininess !== undefined) {
         materialOptions.property("Shininess").setValue(options.shininess);
       }
-    ` : ''}
+    ` : '') + `
     
     return {
       success: true,
@@ -369,11 +380,11 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     }
     
     layer.motionBlur = ${params.enabled};
-    ${params.adjustmentLayer !== undefined ? `
+    ` + (params.adjustmentLayer !== undefined ? `
       if (layer.adjustmentLayer) {
         // Adjustment layer motion blur affects layers below it
       }
-    ` : ''}
+    ` : '') + `
     
     return {
       success: true,

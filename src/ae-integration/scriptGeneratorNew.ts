@@ -182,34 +182,19 @@ export class ScriptGenerator {
   }
 
   private wrapScript(script: string): string {
-    // ExtendScript requires different syntax for IIFE
-    return `
-    var result = (function() {
-      try {
-        ${script}
-      } catch (error) {
-        var errorMessage = "Unknown error";
-        if (error) {
-          if (typeof error === "string") {
-            errorMessage = error;
-          } else if (error.message) {
-            errorMessage = error.message;
-          } else if (error.toString && typeof error.toString === "function") {
-            try {
-              errorMessage = error.toString();
-            } catch (e) {
-              errorMessage = "Error converting error to string";
-            }
-          }
-        }
-        return {
-          success: false,
-          error: errorMessage
-        };
-      }
-    })();
-    result;
-    `;
+    return `(function() {
+  try {
+${script.split('\n').map(line => '    ' + line).join('\n')}
+  } catch (error) {
+    return { 
+      success: false, 
+      error: { 
+        message: error.toString(), 
+        code: error.number ? error.number : 'UNKNOWN' 
+      } 
+    };
+  }
+})();`; // Note: No extra whitespace, IIFE is executed and returns value
   }
 
   // Expose helper functions for external use
