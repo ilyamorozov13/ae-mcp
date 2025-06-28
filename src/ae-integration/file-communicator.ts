@@ -118,6 +118,13 @@ export class AEFileCommunicator {
             continue;
           }
           
+          // Validate response has required properties
+          if (!response || typeof response !== 'object' || !response.id) {
+            this.logger.error(`Invalid response format in ${file}: missing id property`);
+            fs.unlinkSync(filePath);
+            continue;
+          }
+          
           // Find pending command
           const pending = this.pendingCommands.get(response.id);
           if (pending) {

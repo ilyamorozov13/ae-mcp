@@ -1,5 +1,5 @@
-import { ScriptGeneratorModule } from './types';
-import { helpers } from './helpers';
+import { ScriptGeneratorModule } from './types.js';
+import { helpers } from './helpers.js';
 
 export const utilityGenerators: ScriptGeneratorModule = {
   ping: () => `

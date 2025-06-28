@@ -1,16 +1,16 @@
-import { projectGenerators } from './generators/projectGenerators';
-import { compositionGenerators } from './generators/compositionGenerators';
-import { layerGenerators } from './generators/layerGenerators';
-import { advancedLayerGenerators } from './generators/advancedLayerGenerators';
-import { effectsAndKeyframeGenerators } from './generators/effectsAndKeyframeGenerators';
-import { renderGenerators } from './generators/renderGenerators';
-import { batchGenerators } from './generators/batchGenerators';
-import { utilityGenerators } from './generators/utilityGenerators';
-import { expressionGenerators } from './generators/expressionGenerators';
-import { maskGenerators } from './generators/maskGenerators';
-import { textGenerators } from './generators/textGenerators';
-import { keyframeGenerators } from './generators/keyframeGenerators';
-import { helpers } from './generators/helpers';
+import { projectGenerators } from './generators/projectGenerators.js';
+import { compositionGenerators } from './generators/compositionGenerators.js';
+import { layerGenerators } from './generators/layerGenerators.js';
+import { advancedLayerGenerators } from './generators/advancedLayerGenerators.js';
+import { effectsAndKeyframeGenerators } from './generators/effectsAndKeyframeGenerators.js';
+import { renderGenerators } from './generators/renderGenerators.js';
+import { batchGenerators } from './generators/batchGenerators.js';
+import { utilityGenerators } from './generators/utilityGenerators.js';
+import { expressionGenerators } from './generators/expressionGenerators.js';
+import { maskGenerators } from './generators/maskGenerators.js';
+import { textGenerators } from './generators/textGenerators.js';
+import { keyframeGenerators } from './generators/keyframeGenerators.js';
+import { helpers } from './generators/helpers.js';
 
 export class ScriptGenerator {
   private generators: Map<string, Function> = new Map();
@@ -182,15 +182,19 @@ export class ScriptGenerator {
   }
 
   private wrapScript(script: string): string {
+    // ExtendScript requires different syntax for IIFE
     return `
-    try {
-      ${script}
-    } catch (error) {
-      return {
-        success: false,
-        error: error.toString()
-      };
-    }
+    var result = (function() {
+      try {
+        ${script}
+      } catch (error) {
+        return {
+          success: false,
+          error: error.toString()
+        };
+      }
+    })();
+    result;
     `;
   }
 
