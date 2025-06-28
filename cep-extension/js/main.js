@@ -18,6 +18,11 @@
     var logEntries = [];
     var maxLogEntries = 100;
     
+    // Status management
+    var statusTimer = null;
+    var lastStatus = 'ready';
+    var minStatusDuration = 500; // Minimum time to show a status
+    
     // DOM elements
     var elements = {};
     
@@ -77,14 +82,14 @@
      * Process commands manually
      */
     function processCommands() {
-        setStatus('processing', 'Processing...');
-        
         csInterface.evalScript('processCommands()', function(result) {
             try {
                 var response = JSON.parse(result);
                 
                 if (response.success) {
+                    // Only update status if we actually processed something
                     if (response.processed > 0) {
+                        setStatus('processing', 'Processing...');
                         stats.processed += response.processed;
                         addLogEntry('Processed ' + response.processed + ' command(s)', 'success');
                         
@@ -94,23 +99,42 @@
                                 addLogEntry('  → ' + cmd, 'info');
                             });
                         }
+                        
+                        // Set back to ready after a delay
+                        setTimeout(function() {
+                            setStatus('ready', 'Ready');
+                        }, minStatusDuration);
                     }
                     
                     if (response.errors > 0) {
                         stats.errors += response.errors;
                         addLogEntry('Encountered ' + response.errors + ' error(s)', 'error');
+                        setStatus('error', 'Error');
+                        
+                        // Clear error status after delay
+                        setTimeout(function() {
+                            setStatus('ready', 'Ready');
+                        }, minStatusDuration * 2);
                     }
-                    
-                    setStatus('ready', 'Ready');
                 } else {
                     addLogEntry('Error: ' + response.error, 'error');
                     setStatus('error', 'Error');
                     stats.errors++;
+                    
+                    // Clear error status after delay
+                    setTimeout(function() {
+                        setStatus('ready', 'Ready');
+                    }, minStatusDuration * 2);
                 }
             } catch (e) {
                 addLogEntry('Failed to process commands: ' + e.message, 'error');
                 setStatus('error', 'Error');
                 stats.errors++;
+                
+                // Clear error status after delay
+                setTimeout(function() {
+                    setStatus('ready', 'Ready');
+                }, minStatusDuration * 2);
             }
             
             updateStats();
@@ -169,7 +193,7 @@
             processInterval = setInterval(function() {
                 processCommands();
                 updateLastCheck();
-            }, 200); // Process every 200ms
+            }, 500); // Process every 500ms (reduced frequency)
         }
     }
     
@@ -220,11 +244,33 @@
     }
     
     /**
-     * Set status indicator
+     * Set status indicator with debouncing
      */
     function setStatus(state, text) {
-        elements.statusIndicator.className = 'status-indicator ' + state;
-        elements.statusText.textContent = text;
+        // Clear any pending status change
+        if (statusTimer) {
+            clearTimeout(statusTimer);
+            statusTimer = null;
+        }
+        
+        // Don't update if it's the same status
+        if (lastStatus === state && elements.statusText.textContent === text) {
+            return;
+        }
+        
+        // Update immediately for error states
+        if (state === 'error') {
+            elements.statusIndicator.className = 'status-indicator ' + state;
+            elements.statusText.textContent = text;
+            lastStatus = state;
+        } else {
+            // For other states, use a small delay to prevent flashing
+            statusTimer = setTimeout(function() {
+                elements.statusIndicator.className = 'status-indicator ' + state;
+                elements.statusText.textContent = text;
+                lastStatus = state;
+            }, 50);
+        }
     }
     
     /**
