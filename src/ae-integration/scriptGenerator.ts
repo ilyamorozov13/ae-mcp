@@ -57,7 +57,7 @@ export class ScriptGenerator {
             success: false, 
             error: { 
               message: error.toString(), 
-              code: error.number || 'UNKNOWN' 
+              code: error.number ? error.number : 'UNKNOWN' 
             } 
           };
         }
@@ -226,11 +226,11 @@ export class ScriptGenerator {
       
       var comp = app.project.items.addComp(
         "${this.escapeString(params.name)}",
-        ${params.width || 1920},
-        ${params.height || 1080},
+        ${params.width ? params.width : 1920},
+        ${params.height ? params.height : 1080},
         1.0,
-        ${params.duration || 10},
-        ${params.frameRate || 30}
+        ${params.duration ? params.duration : 10},
+        ${params.frameRate ? params.frameRate : 30}
       );
       
       return {
@@ -361,9 +361,9 @@ export class ScriptGenerator {
       
       var layer = comp.layers.addSolid(
         [${params.color ? params.color.join(',') : '1,1,1'}],
-        "${this.escapeString(params.name || 'Solid')}",
-        ${params.width || 'comp.width'},
-        ${params.height || 'comp.height'},
+        "${this.escapeString(params.name ? params.name : 'Solid')}",
+        ${params.width ? params.width : 'comp.width'},
+        ${params.height ? params.height : 'comp.height'},
         1.0
       );
       
@@ -413,7 +413,7 @@ export class ScriptGenerator {
       
       // Add shape content to make it visible
       var shapeGroup = layer.property("Contents").addProperty("ADBE Vector Group");
-      var shapeType = "${params.shapeType || 'rectangle'}";
+      var shapeType = "${params.shapeType ? params.shapeType : 'rectangle'}";
       
       // Add the shape path based on type
       var shapePath;
@@ -472,10 +472,10 @@ export class ScriptGenerator {
       switch(type) {
         case "solid":
           var color = ${params.color ? `[${params.color.join(',')}]` : '[0, 0, 0]'};
-          layer = comp.layers.addSolid(color, "${params.name || 'Solid'}", comp.width, comp.height, 1);
+          layer = comp.layers.addSolid(color, "${params.name ? params.name : 'Solid'}", comp.width, comp.height, 1);
           break;
         case "text":
-          layer = comp.layers.addText("${this.escapeString(params.text || 'Text')}");
+          layer = comp.layers.addText("${this.escapeString(params.text ? params.text : 'Text')}");
           ${params.name ? `layer.name = "${this.escapeString(params.name)}";` : ''}
           break;
         case "shape":
@@ -599,7 +599,7 @@ export class ScriptGenerator {
       };
       
       // Use mapped name if available, otherwise use as-is
-      var normalizedProperty = propertyMap[propertyName.toLowerCase()] || propertyName;
+      var normalizedProperty = propertyMap[propertyName.toLowerCase()] ? propertyMap[propertyName.toLowerCase()] : propertyName;
       
       var prop = layer.property(normalizedProperty);
       if (!prop) {
@@ -919,7 +919,7 @@ export class ScriptGenerator {
             "rotation": "Rotation",
             "opacity": "Opacity"
           };
-          var propName = propertyMap[kf.property.toLowerCase()] || kf.property;
+          var propName = propertyMap[kf.property.toLowerCase()] ? propertyMap[kf.property.toLowerCase()] : kf.property;
           
           var prop = layer.property(propName);
           if (!prop) {
@@ -951,11 +951,16 @@ export class ScriptGenerator {
         }
       }
       
+      var successCount = 0;
+      for (var i = 0; i < results.length; i++) {
+        if (results[i].success) successCount++;
+      }
+      
       return {
         success: true,
         data: {
           total: keyframes.length,
-          successful: results.filter(function(r) { return r.success; }).length,
+          successful: successCount,
           results: results
         }
       };
@@ -1038,11 +1043,16 @@ export class ScriptGenerator {
         }
       }
       
+      var successCount = 0;
+      for (var i = 0; i < results.length; i++) {
+        if (results[i].success) successCount++;
+      }
+      
       return {
         success: true,
         data: {
           total: layers.length,
-          successful: results.filter(function(r) { return r.success; }).length,
+          successful: successCount,
           results: results
         }
       };
@@ -1072,7 +1082,7 @@ export class ScriptGenerator {
     
     closeProject: (params: { saveChanges?: boolean }) => `
       if (app.project) {
-        if (${params.saveChanges || false}) {
+        if (${params.saveChanges ? params.saveChanges : false}) {
           app.project.save();
         }
         app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
@@ -1118,9 +1128,9 @@ export class ScriptGenerator {
         data: {
           id: footage.id,
           name: footage.name,
-          width: footage.width || 0,
-          height: footage.height || 0,
-          duration: footage.duration || 0
+          width: footage.width ? footage.width : 0,
+          height: footage.height ? footage.height : 0,
+          duration: footage.duration ? footage.duration : 0
         }
       };
     `,
@@ -1177,7 +1187,7 @@ export class ScriptGenerator {
     
     batchRender: (params: { compIds: number[]; outputDirectory: string; outputFormat?: string; outputModule?: string }) => `
       var results = [];
-      var format = "${params.outputFormat || 'mp4'}";
+      var format = "${params.outputFormat ? params.outputFormat : 'mp4'}";
       
       for (var i = 0; i < ${JSON.stringify(params.compIds)}.length; i++) {
         var compId = ${JSON.stringify(params.compIds)}[i];
@@ -1207,11 +1217,21 @@ export class ScriptGenerator {
         });
       }
       
+      var queuedCount = 0;
+      var failedCount = 0;
+      for (var i = 0; i < results.length; i++) {
+        if (results[i].success) {
+          queuedCount++;
+        } else {
+          failedCount++;
+        }
+      }
+      
       return {
         success: true,
         data: {
-          queued: results.filter(function(r) { return r.success; }).length,
-          failed: results.filter(function(r) { return !r.success; }).length,
+          queued: queuedCount,
+          failed: failedCount,
           results: results
         }
       };
