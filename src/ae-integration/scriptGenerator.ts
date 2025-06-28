@@ -400,8 +400,7 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
       compId: number;
       name?: string;
       shapeType?: string;
-      color?: number[];
-      size?: number[];
+      properties?: any;
     }) => `
       var comp = app.project.itemByID(${params.compId});
       if (!comp || !(comp instanceof CompItem)) {
@@ -411,22 +410,28 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
       var layer = comp.layers.addShape();
       ${params.name ? `layer.name = "${this.escapeString(params.name)}";` : ''}
       
+      // Parse properties
+      var props = ${params.properties ? JSON.stringify(params.properties) : '{}'};
+      var shapeType = "${params.shapeType ? params.shapeType : 'rectangle'}";
+      
       // Add shape content directly to the root vectors group
       var contents = layer.property("ADBE Root Vectors Group");
-      var shapeType = "${params.shapeType ? params.shapeType : 'rectangle'}";
       
       // Add the shape path based on type
       var shapePath;
       if (shapeType === "rectangle") {
         shapePath = contents.addProperty("ADBE Vector Shape - Rect");
-        // Set size if provided
-        ${params.size ? `shapePath.property("ADBE Vector Rect Size").setValue([${params.size.join(',')}]);` : 
-                       `shapePath.property("ADBE Vector Rect Size").setValue([100, 100]);`}
+        var size = props.size || [100, 100];
+        shapePath.property("ADBE Vector Rect Size").setValue(size);
+        
+        // Add corner radius if specified
+        if (props.cornerRadius && props.cornerRadius > 0) {
+          shapePath.property("ADBE Vector Rect Roundness").setValue(props.cornerRadius);
+        }
       } else if (shapeType === "ellipse") {
         shapePath = contents.addProperty("ADBE Vector Shape - Ellipse");
-        // Set size if provided
-        ${params.size ? `shapePath.property("ADBE Vector Ellipse Size").setValue([${params.size.join(',')}]);` : 
-                       `shapePath.property("ADBE Vector Ellipse Size").setValue([100, 100]);`}
+        var size = props.size || [100, 100];
+        shapePath.property("ADBE Vector Ellipse Size").setValue(size);
       } else if (shapeType === "polygon" || shapeType === "star") {
         shapePath = contents.addProperty("ADBE Vector Shape - Star");
         // Set type after creation
@@ -435,17 +440,61 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
         } else {
           shapePath.property("ADBE Vector Star Type").setValue(2); // 2 = star
         }
-        shapePath.property("ADBE Vector Star Points").setValue(5);
-        shapePath.property("ADBE Vector Star Inner Radius").setValue(50);
-        shapePath.property("ADBE Vector Star Outer Radius").setValue(100);
+        
+        // Set points
+        if (props.points) {
+          shapePath.property("ADBE Vector Star Points").setValue(props.points);
+        } else {
+          shapePath.property("ADBE Vector Star Points").setValue(5);
+        }
+        
+        // Set radii
+        if (props.outerRadius) {
+          shapePath.property("ADBE Vector Star Outer Radius").setValue(props.outerRadius);
+        } else {
+          shapePath.property("ADBE Vector Star Outer Radius").setValue(100);
+        }
+        
+        if (shapeType === "star" && props.innerRadius) {
+          shapePath.property("ADBE Vector Star Inner Radius").setValue(props.innerRadius);
+        } else if (shapeType === "star") {
+          shapePath.property("ADBE Vector Star Inner Radius").setValue(50);
+        }
+      }
+      
+      // Add stroke if specified
+      if (props.strokeWidth && props.strokeWidth > 0) {
+        var stroke = contents.addProperty("ADBE Vector Graphic - Stroke");
+        stroke.property("ADBE Vector Stroke Width").setValue(props.strokeWidth);
+        if (props.strokeColor) {
+          stroke.property("ADBE Vector Stroke Color").setValue(props.strokeColor);
+        }
       }
       
       // Add fill to make the shape visible
       var fill = contents.addProperty("ADBE Vector Graphic - Fill");
-      ${params.color ? `fill.property("ADBE Vector Fill Color").setValue([${params.color.join(',')}]);` : ''}
+      if (props.fillColor) {
+        fill.property("ADBE Vector Fill Color").setValue(props.fillColor);
+      } else {
+        // Default red fill
+        fill.property("ADBE Vector Fill Color").setValue([1, 0, 0]);
+      }
       
-      // Set the layer position to center of comp
-      layer.property("Position").setValue([comp.width/2, comp.height/2]);
+      // Set transform properties
+      var position = props.position || [comp.width/2, comp.height/2];
+      layer.property("Position").setValue(position);
+      
+      if (props.scale) {
+        layer.property("Scale").setValue(props.scale);
+      }
+      
+      if (props.rotation !== undefined) {
+        layer.property("Rotation").setValue(props.rotation);
+      }
+      
+      if (props.opacity !== undefined) {
+        layer.property("Opacity").setValue(props.opacity);
+      }
       
       return {
         success: true,
@@ -1012,23 +1061,26 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
               
               // Add default shape content if not empty
               var contents = layer.property("ADBE Root Vectors Group");
+              var props = layerDef.properties || {};
               
               // Determine shape type from properties or use default
-              var shapeType = "rectangle"; // default
-              if (layerDef.properties && layerDef.properties.shapeType) {
-                shapeType = layerDef.properties.shapeType;
-              }
+              var shapeType = props.shapeType || "rectangle";
               
               // Add the shape path based on type
               var shapePath;
               if (shapeType === "rectangle") {
                 shapePath = contents.addProperty("ADBE Vector Shape - Rect");
-                // Set default size
-                shapePath.property("ADBE Vector Rect Size").setValue([100, 100]);
+                var size = props.size || [100, 100];
+                shapePath.property("ADBE Vector Rect Size").setValue(size);
+                
+                // Add corner radius if specified
+                if (props.cornerRadius && props.cornerRadius > 0) {
+                  shapePath.property("ADBE Vector Rect Roundness").setValue(props.cornerRadius);
+                }
               } else if (shapeType === "ellipse") {
                 shapePath = contents.addProperty("ADBE Vector Shape - Ellipse");
-                // Set default size
-                shapePath.property("ADBE Vector Ellipse Size").setValue([100, 100]);
+                var size = props.size || [100, 100];
+                shapePath.property("ADBE Vector Ellipse Size").setValue(size);
               } else if (shapeType === "polygon" || shapeType === "star") {
                 shapePath = contents.addProperty("ADBE Vector Shape - Star");
                 if (shapeType === "polygon") {
@@ -1036,20 +1088,46 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
                 } else {
                   shapePath.property("ADBE Vector Star Type").setValue(2); // star
                 }
-                shapePath.property("ADBE Vector Star Points").setValue(5);
-                shapePath.property("ADBE Vector Star Inner Radius").setValue(50);
-                shapePath.property("ADBE Vector Star Outer Radius").setValue(100);
+                
+                // Set points
+                var points = props.points || 5;
+                shapePath.property("ADBE Vector Star Points").setValue(points);
+                
+                // Set radii
+                var outerRadius = props.outerRadius || 100;
+                shapePath.property("ADBE Vector Star Outer Radius").setValue(outerRadius);
+                
+                if (shapeType === "star") {
+                  var innerRadius = props.innerRadius || 50;
+                  shapePath.property("ADBE Vector Star Inner Radius").setValue(innerRadius);
+                }
+              }
+              
+              // Add stroke if specified
+              if (props.strokeWidth && props.strokeWidth > 0) {
+                var stroke = contents.addProperty("ADBE Vector Graphic - Stroke");
+                stroke.property("ADBE Vector Stroke Width").setValue(props.strokeWidth);
+                if (props.strokeColor) {
+                  stroke.property("ADBE Vector Stroke Color").setValue(props.strokeColor);
+                }
               }
               
               // Add fill to make the shape visible
               var fill = contents.addProperty("ADBE Vector Graphic - Fill");
-              // Use color from properties if provided
-              if (layerDef.properties && layerDef.properties.color) {
-                fill.property("ADBE Vector Fill Color").setValue(layerDef.properties.color);
+              if (props.fillColor) {
+                fill.property("ADBE Vector Fill Color").setValue(props.fillColor);
+              } else if (props.color) {
+                // Backwards compatibility
+                fill.property("ADBE Vector Fill Color").setValue(props.color);
+              } else {
+                // Default red fill
+                fill.property("ADBE Vector Fill Color").setValue([1, 0, 0]);
               }
               
-              // Center the layer in the comp
-              layer.property("Position").setValue([comp.width/2, comp.height/2]);
+              // Initial position (will be overridden by general properties if specified)
+              if (!props.position) {
+                layer.property("Position").setValue([comp.width/2, comp.height/2]);
+              }
               break;
               
             case "null":
@@ -1100,6 +1178,61 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
         success: true,
         data: {
           total: layers.length,
+          successful: successCount,
+          results: results
+        }
+      };
+    `,
+    
+    batchModifyLayerProperties: (params: { compId: number, modifications: any[] }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var results = [];
+      var modifications = ${JSON.stringify(params.modifications)};
+      
+      for (var i = 0; i < modifications.length; i++) {
+        var mod = modifications[i];
+        try {
+          var layer = comp.layer(mod.layerIndex);
+          if (!layer) {
+            throw new Error("Layer at index " + mod.layerIndex + " not found");
+          }
+          
+          // Apply properties
+          var props = mod.properties;
+          if (props.position) layer.property("Position").setValue(props.position);
+          if (props.scale) layer.property("Scale").setValue(props.scale);
+          if (typeof props.rotation !== 'undefined') layer.property("Rotation").setValue(props.rotation);
+          if (typeof props.opacity !== 'undefined') layer.property("Opacity").setValue(props.opacity);
+          
+          results.push({
+            success: true,
+            layerIndex: mod.layerIndex,
+            layerName: layer.name,
+            appliedProperties: Object.keys(props)
+          });
+          
+        } catch (e) {
+          results.push({
+            success: false,
+            layerIndex: mod.layerIndex,
+            error: e.toString()
+          });
+        }
+      }
+      
+      var successCount = 0;
+      for (var i = 0; i < results.length; i++) {
+        if (results[i].success) successCount++;
+      }
+      
+      return {
+        success: true,
+        data: {
+          total: modifications.length,
           successful: successCount,
           results: results
         }

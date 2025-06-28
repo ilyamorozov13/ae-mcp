@@ -60,7 +60,7 @@ export const layerTools = [
   
   {
     name: "add_shape_layer",
-    description: "Add a shape layer to a composition",
+    description: "Add a shape layer to a composition with customizable properties",
     inputSchema: {
       type: "object",
       properties: {
@@ -75,9 +75,92 @@ export const layerTools = [
         },
         shapeType: { 
           type: "string", 
-          enum: ["rectangle", "ellipse", "polygon", "star"],
+          enum: ["rectangle", "ellipse", "polygon", "star", "custom"],
           default: "rectangle",
           description: "Type of shape to create" 
+        },
+        properties: {
+          type: "object",
+          description: "Shape properties",
+          properties: {
+            size: {
+              type: "array",
+              items: { type: "number" },
+              minItems: 2,
+              maxItems: 2,
+              default: [100, 100],
+              description: "Size [width, height] for rectangle/ellipse"
+            },
+            fillColor: {
+              type: "array",
+              items: { type: "number" },
+              minItems: 3,
+              maxItems: 4,
+              default: [1, 0, 0],
+              description: "Fill color [R, G, B] or [R, G, B, A] (0-1)"
+            },
+            strokeColor: {
+              type: "array",
+              items: { type: "number" },
+              minItems: 3,
+              maxItems: 4,
+              description: "Stroke color [R, G, B] or [R, G, B, A] (0-1)"
+            },
+            strokeWidth: {
+              type: "number",
+              default: 0,
+              description: "Stroke width in pixels"
+            },
+            points: {
+              type: "number",
+              default: 5,
+              minimum: 3,
+              maximum: 100,
+              description: "Number of points for polygon/star"
+            },
+            innerRadius: {
+              type: "number",
+              default: 50,
+              description: "Inner radius for star shapes"
+            },
+            outerRadius: {
+              type: "number",
+              default: 100,
+              description: "Outer radius for polygon/star shapes"
+            },
+            cornerRadius: {
+              type: "number",
+              default: 0,
+              description: "Corner radius for rounded rectangles"
+            },
+            position: {
+              type: "array",
+              items: { type: "number" },
+              minItems: 2,
+              maxItems: 3,
+              description: "Initial position [x, y] or [x, y, z]"
+            },
+            scale: {
+              type: "array",
+              items: { type: "number" },
+              minItems: 2,
+              maxItems: 3,
+              default: [100, 100],
+              description: "Initial scale [x, y] or [x, y, z] as percentages"
+            },
+            rotation: {
+              type: "number",
+              default: 0,
+              description: "Initial rotation in degrees"
+            },
+            opacity: {
+              type: "number",
+              minimum: 0,
+              maximum: 100,
+              default: 100,
+              description: "Initial opacity (0-100)"
+            }
+          }
         }
       },
       required: ["compId"]

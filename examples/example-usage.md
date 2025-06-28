@@ -48,6 +48,128 @@ Now you can use natural language commands like:
 - "Scale the layer to 150%"
 - "Set the opacity to 75%"
 
+### Shape Layer Creation
+- "Add a blue circle shape layer"
+- "Create a rounded rectangle with 20px corner radius, yellow fill, and black stroke"
+- "Add a 6-pointed star shape with purple fill and 5px orange stroke"
+- "Create a triangle (3-point polygon) with gradient fill"
+
+### Advanced Shape Examples
+```javascript
+// Create a stylized star with custom properties
+{
+  "tool": "add_shape_layer",
+  "params": {
+    "compId": 1,
+    "name": "Fancy Star",
+    "shapeType": "star",
+    "properties": {
+      "points": 8,
+      "innerRadius": 30,
+      "outerRadius": 80,
+      "fillColor": [0.2, 0.6, 1.0],  // Light blue
+      "strokeColor": [1.0, 0.8, 0.0], // Gold
+      "strokeWidth": 3,
+      "position": [960, 540],
+      "rotation": 22.5,
+      "scale": [150, 150]
+    }
+  }
+}
+
+// Create multiple shapes in batch
+{
+  "tool": "batch_create_layers",
+  "params": {
+    "compId": 1,
+    "layers": [
+      {
+        "type": "shape",
+        "name": "Background Circle",
+        "properties": {
+          "shapeType": "ellipse",
+          "size": [500, 500],
+          "fillColor": [0.1, 0.1, 0.1],
+          "position": [960, 540],
+          "opacity": 50
+        }
+      },
+      {
+        "type": "shape",
+        "name": "Inner Diamond",
+        "properties": {
+          "shapeType": "polygon",
+          "points": 4,
+          "outerRadius": 150,
+          "fillColor": [1, 0.5, 0],
+          "strokeColor": [1, 1, 1],
+          "strokeWidth": 2,
+          "position": [960, 540],
+          "rotation": 45
+        }
+      },
+      {
+        "type": "shape",
+        "name": "Accent Star",
+        "properties": {
+          "shapeType": "star",
+          "points": 5,
+          "innerRadius": 40,
+          "outerRadius": 100,
+          "fillColor": [1, 1, 0],
+          "position": [960, 540]
+        }
+      }
+    ]
+  }
+}
+```
+
+### Batch Modify Layer Properties
+- "Move layers 1, 2, and 3 to different positions"
+- "Scale multiple layers at once"
+- "Apply different rotations to a group of layers"
+
+```javascript
+// Example: Arrange shapes in a circle
+{
+  "tool": "batch_modify_layer_properties",
+  "params": {
+    "compId": 1,
+    "modifications": [
+      {
+        "layerIndex": 1,
+        "properties": {
+          "position": [960, 340],
+          "rotation": 0
+        }
+      },
+      {
+        "layerIndex": 2,
+        "properties": {
+          "position": [1160, 540],
+          "rotation": 90
+        }
+      },
+      {
+        "layerIndex": 3,
+        "properties": {
+          "position": [960, 740],
+          "rotation": 180
+        }
+      },
+      {
+        "layerIndex": 4,
+        "properties": {
+          "position": [760, 540],
+          "rotation": 270
+        }
+      }
+    ]
+  }
+}
+```
+
 ### Animation
 - "Set a position keyframe at 0 seconds"
 - "Move to 2 seconds and set position to 1500, 540"

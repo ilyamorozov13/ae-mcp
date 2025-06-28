@@ -112,7 +112,17 @@ export const batchTools = [
                   rotation: { type: "number" },
                   opacity: { type: "number" },
                   color: { type: "array", items: { type: "number" } },
-                  text: { type: "string" }
+                  text: { type: "string" },
+                  // Shape-specific properties
+                  shapeType: { type: "string", enum: ["rectangle", "ellipse", "polygon", "star"] },
+                  size: { type: "array", items: { type: "number" }, minItems: 2, maxItems: 2 },
+                  fillColor: { type: "array", items: { type: "number" }, minItems: 3, maxItems: 4 },
+                  strokeColor: { type: "array", items: { type: "number" }, minItems: 3, maxItems: 4 },
+                  strokeWidth: { type: "number" },
+                  points: { type: "number" },
+                  innerRadius: { type: "number" },
+                  outerRadius: { type: "number" },
+                  cornerRadius: { type: "number" }
                 }
               }
             },
@@ -121,6 +131,65 @@ export const batchTools = [
         }
       },
       required: ["compId", "layers"]
+    }
+  },
+
+  {
+    name: "batch_modify_layer_properties",
+    description: "Modify properties of multiple layers at once for better performance",
+    inputSchema: {
+      type: "object",
+      properties: {
+        compId: {
+          type: "number",
+          description: "ID of the composition"
+        },
+        modifications: {
+          type: "array",
+          description: "Array of layer modifications",
+          items: {
+            type: "object",
+            properties: {
+              layerIndex: {
+                type: "number",
+                description: "Index of the layer to modify (1-based)"
+              },
+              properties: {
+                type: "object",
+                description: "Properties to modify",
+                properties: {
+                  position: {
+                    type: "array",
+                    items: { type: "number" },
+                    minItems: 2,
+                    maxItems: 3,
+                    description: "Position [x, y] or [x, y, z]"
+                  },
+                  scale: {
+                    type: "array",
+                    items: { type: "number" },
+                    minItems: 2,
+                    maxItems: 3,
+                    description: "Scale [x, y] or [x, y, z] as percentages"
+                  },
+                  rotation: { 
+                    type: "number", 
+                    description: "Rotation in degrees" 
+                  },
+                  opacity: { 
+                    type: "number", 
+                    minimum: 0,
+                    maximum: 100,
+                    description: "Opacity (0-100)" 
+                  }
+                }
+              }
+            },
+            required: ["layerIndex", "properties"]
+          }
+        }
+      },
+      required: ["compId", "modifications"]
     }
   }
 ];
