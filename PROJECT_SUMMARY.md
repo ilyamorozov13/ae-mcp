@@ -21,7 +21,7 @@ ExtendScript Execution
 ## Key Components
 
 ### 1. MCP Server (`src/`)
-- **stdio-server-hybrid.ts** - Main server supporting both socket and file communication
+- **stdio-server.ts** - Main server supporting both socket and file communication
 - **file-communicator.ts** - File-based command/response system
 - **scriptGenerator.ts** - Converts commands to ExtendScript
 - **Tool definitions** - Project, composition, layer, render, and batch tools

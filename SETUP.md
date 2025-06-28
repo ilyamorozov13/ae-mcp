@@ -65,7 +65,7 @@ Run `enable-debug-mode.bat` as administrator
   "mcpServers": {
     "ae-mcp": {
       "command": "node",
-      "args": ["/absolute/path/to/ae-mcp/dist/stdio-server-hybrid.js"],
+      "args": ["/absolute/path/to/ae-mcp/dist/stdio-server.js"],
       "env": {
         "AE_USE_FILE_BRIDGE": "true"
       }
