@@ -49,9 +49,10 @@ function processCommands() {
         var allFiles = commandsFolder.getFiles("*.json");
         var files = [];
         
-        // Filter out response files
+        // Filter out response files and processed files
         for (var i = 0; i < allFiles.length; i++) {
-            if (allFiles[i].name.indexOf(".response") === -1) {
+            if (allFiles[i].name.indexOf(".response") === -1 && 
+                allFiles[i].name.indexOf(".processed") === -1) {
                 files.push(allFiles[i]);
             }
         }
@@ -81,14 +82,17 @@ function processCommands() {
                     // Execute the script and capture the result
                     var commandResult = eval(script);
                     
-                    // Convert result to string if it's an object
-                    var resultToWrite = commandResult;
-                    if (typeof commandResult === "object" && commandResult !== null) {
-                        try {
-                            resultToWrite = JSON.stringify(commandResult);
-                        } catch (e) {
-                            resultToWrite = commandResult.toString();
-                        }
+                    // Format result to match expected structure
+                    var formattedResult;
+                    if (commandResult && typeof commandResult === "object" && commandResult.hasOwnProperty("success")) {
+                        // Result already has the expected format
+                        formattedResult = commandResult;
+                    } else {
+                        // Wrap result in expected format
+                        formattedResult = {
+                            success: true,
+                            data: commandResult
+                        };
                     }
                     
                     // Write response file
@@ -97,8 +101,7 @@ function processCommands() {
                     if (responseFile.open("w")) {
                         responseFile.write(JSON.stringify({
                             id: commandId,
-                            success: true,
-                            result: resultToWrite
+                            result: formattedResult
                         }, null, 2));
                         responseFile.close();
                         
@@ -120,8 +123,13 @@ function processCommands() {
                     if (errorResponseFile.open("w")) {
                         errorResponseFile.write(JSON.stringify({
                             id: commandId,
-                            success: false,
-                            error: execError.toString()
+                            result: {
+                                success: false,
+                                error: {
+                                    message: execError.toString(),
+                                    code: "EXECUTION_ERROR"
+                                }
+                            }
                         }, null, 2));
                         errorResponseFile.close();
                     }
@@ -155,11 +163,17 @@ function processCommands() {
  */
 function archiveCommand(file) {
     try {
-        // Simply delete the command file after processing
-        // The response file remains for the MCP server to read
-        file.remove();
+        // Don't delete the command file immediately
+        // Instead, rename it to mark as processed
+        var processedName = file.name + ".processed";
+        file.rename(processedName);
     } catch (e) {
-        // If deletion fails, log it but continue
+        // If rename fails, try to delete
+        try {
+            file.remove();
+        } catch (e2) {
+            // If deletion also fails, log it but continue
+        }
     }
 }
 
@@ -191,6 +205,7 @@ function pad(num) {
     return (num < 10 ? "0" : "") + num;
 }
 
+
 /**
  * Get project information
  */
@@ -214,7 +229,10 @@ function getProjectInfo() {
         }
     }
     
-    return JSON.stringify(info);
+    return {
+        success: true,
+        data: info
+    };
 }
 
 /**

@@ -1,132 +1,223 @@
-# Adobe After Effects MCP Server
+# AE MCP Server - Adobe After Effects Model Context Protocol Server
 
-A Model Context Protocol (MCP) server that enables AI assistants to interact with Adobe After Effects through a standardized interface.
+A Model Context Protocol (MCP) server that enables AI assistants to interact with Adobe After Effects through a file-based communication bridge.
 
-## Features
+## Overview
 
-- **Project Management**: Create, open, save, and manage After Effects projects
-- **Composition Operations**: Create and modify compositions with custom settings
-- **Layer Management**: Add and manipulate various layer types (solid, text, shape)
-- **Animation**: Set keyframes and create animations programmatically
-- **Rendering**: Manage render queue and export compositions
-- **Asset Management**: Import and organize footage
+This project provides an MCP server that allows AI assistants (like Claude) to control Adobe After Effects by:
+- Creating and managing projects
+- Creating and modifying compositions
+- Managing layers and keyframes
+- Rendering compositions
+- Batch processing operations
 
 ## Architecture
 
-The system consists of three main components:
+The system uses a file-based communication approach for reliability:
 
-1. **MCP Server (Node.js)**: Handles MCP protocol communication and translates commands
-2. **CEP Extension**: Runs inside After Effects to execute ExtendScript commands
-3. **ExtendScript Bridge**: Executes commands within the After Effects context
+```
+AI Assistant <-> MCP Server <-> File System <-> CEP Extension <-> After Effects
+```
 
-## Installation
+1. **MCP Server** - Receives commands from AI assistants via the MCP protocol
+2. **File Bridge** - Writes commands as JSON files to a watched directory
+3. **CEP Extension** - Monitors the directory and executes commands in After Effects
+4. **Response System** - Returns results via response files
 
-### Prerequisites
+## Requirements
 
-- Adobe After Effects CC 2020 or newer
-- Node.js 18+
-- CEP debugging enabled in After Effects
+- Adobe After Effects 2022 or later
+- Node.js 16+ and npm
+- macOS or Windows
 
-### Setup Steps
+## Quick Start
 
-1. **Install the MCP Server**:
-   ```bash
-   npm install
-   npm run build
-   ```
+### 1. Install and Build
 
-2. **Install the CEP Extension**:
-   - Copy the `ae-extension` folder to your After Effects extensions directory:
-     - Windows: `%APPDATA%/Adobe/CEP/extensions/`
-     - macOS: `~/Library/Application Support/Adobe/CEP/extensions/`
-
-3. **Enable Script Access in After Effects**:
-   - Go to Preferences > Scripting & Expressions
-   - Enable "Allow Scripts to Write Files and Access Network"
-
-4. **Enable CEP Debug Mode** (for development):
-   - Windows: Create registry key `HKEY_CURRENT_USER\Software\Adobe\CSXS.9\PlayerDebugMode` = "1"
-   - macOS: Run `defaults write com.adobe.CSXS.9 PlayerDebugMode 1`
-
-## Usage
-
-### Standard MCP Client (Claude Desktop, Cline, etc.)
-
-1. **Configure your MCP client** using the configuration in `MCP_CONFIGURATION.md`
-2. **Open After Effects** and find the "AE MCP Bridge" panel in Window > Extensions
-3. **Connect the Extension** to localhost:8080 using the panel interface
-4. **Start using** natural language commands in your MCP client
-
-### Standalone HTTP Server (for testing)
-
-1. **Start the HTTP server**:
-   ```bash
-   npm run server
-   ```
-2. **Connect After Effects** as described above
-3. **Send JSON-RPC requests** to `http://localhost:3000/jsonrpc`
-
-## Available Tools
-
-### Project Management
-- `create_project`: Create a new After Effects project
-- `open_project`: Open an existing project file
-- `save_project`: Save the current project
-- `get_project_info`: Get information about the current project
-
-### Composition Operations
-- `create_composition`: Create a new composition
-- `modify_composition`: Modify composition properties
-- `list_compositions`: List all compositions in the project
-
-### Layer Management
-- `add_solid_layer`: Add a solid color layer
-- `add_text_layer`: Add a text layer
-- `modify_layer_properties`: Modify layer transform properties
-- `set_keyframe`: Set keyframes for animation
-
-### Rendering
-- `add_to_render_queue`: Add a composition to the render queue
-- `start_render`: Start rendering the queue
-- `get_render_queue`: Get render queue status
-
-## Development
-
-### Building
 ```bash
+git clone <repository-url>
+cd ae-mcp
+npm install
 npm run build
 ```
 
-### Running in Development Mode
+### 2. Install the CEP Extension
+
 ```bash
-npm run dev
+cd cep-extension
+./install.sh  # macOS
+# or manually copy to CEP extensions folder on Windows
 ```
 
-### Project Structure
+### 3. Enable the Extension in After Effects
+
+1. Open After Effects
+2. Go to Window > Extensions > AE MCP Bridge
+3. Ensure "Auto Process: ON" is enabled
+
+### 4. Configure Your MCP Client
+
+For Claude Desktop, add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "ae-mcp": {
+      "command": "node",
+      "args": ["/path/to/ae-mcp/dist/stdio-server-hybrid.js"],
+      "env": {
+        "AE_USE_FILE_BRIDGE": "true"
+      }
+    }
+  }
+}
 ```
-ae-mcp/
-├── src/                    # MCP server source code
-│   ├── server/            # Server implementation
-│   ├── ae-integration/    # After Effects communication
-│   └── types/             # TypeScript definitions
-├── ae-extension/          # CEP extension for After Effects
-│   ├── CSXS/             # Extension manifest
-│   └── js/               # Extension JavaScript
-└── dist/                  # Compiled output
-```
+
+## Available Tools
+
+### Project Tools
+- `create_project` - Create a new After Effects project
+- `open_project` - Open an existing project
+- `save_project` - Save the current project
+- `get_project_info` - Get information about the current project
+
+### Composition Tools
+- `create_composition` - Create a new composition with custom settings
+- `get_composition` - Get composition details
+- `list_compositions` - List all compositions in the project
+- `update_composition` - Update composition settings
+
+### Layer Tools
+- `create_solid_layer` - Create a solid color layer
+- `create_text_layer` - Create a text layer
+- `create_adjustment_layer` - Create an adjustment layer
+- `create_null_layer` - Create a null object layer
+- `create_shape_layer` - Create a shape layer
+- `get_layer` - Get layer information
+- `list_layers` - List all layers in a composition
+- `update_layer_property` - Update layer transform properties
+- `add_keyframe` - Add keyframes to animate properties
+- `set_layer_parent` - Set layer parenting
+
+### Render Tools
+- `add_to_render_queue` - Add composition to render queue
+- `start_render` - Start rendering the queue
+- `get_render_status` - Check render progress
+- `set_render_settings` - Configure render settings
+
+### Batch Tools
+- `batch_create_comps` - Create multiple compositions at once
+- `batch_import` - Import multiple files
+- `batch_replace` - Replace multiple items
+- `batch_process` - Process multiple items with a script
+
+## How It Works
+
+### File-Based Communication
+
+The system uses a simple file-based approach for maximum reliability:
+
+1. **Commands Directory**: `~/Documents/ae-mcp-commands/`
+2. **Command Format**: JSON files with unique IDs
+3. **Response Format**: Matching `.response` files
+4. **Auto-Processing**: CEP extension polls every 200ms
+
+### Example Command Flow
+
+1. MCP server receives: "Create a 1080p composition"
+2. Writes to: `~/Documents/ae-mcp-commands/cmd_123.json`
+   ```json
+   {
+     "id": "cmd_123",
+     "script": "app.project.items.addComp('New Comp', 1920, 1080, 1, 10, 30);"
+   }
+   ```
+3. CEP extension executes the script
+4. Writes response: `cmd_123.json.response`
+5. MCP server reads response and returns to client
+
+## CEP Extension
+
+The CEP (Common Extensibility Platform) extension runs inside After Effects:
+
+- **Auto Process Mode**: Continuously monitors for new commands
+- **Manual Process**: Click to process commands on demand
+- **Activity Log**: Shows all processed commands and errors
+- **Status Display**: Real-time connection and processing status
+
+### Extension Features
+
+- Command processing with 200ms polling interval
+- Automatic error handling and recovery
+- Command history and logging
+- Visual status indicators
+- Manual command folder access
 
 ## Troubleshooting
 
-### Connection Issues
-- Ensure After Effects has network access enabled
-- Check that the CEP extension is properly installed
-- Verify the MCP server is running on the correct port
+### Extension Not Showing
 
-### Script Execution Errors
-- Enable "Allow Scripts to Write Files and Access Network" in AE preferences
-- Check the After Effects version compatibility
-- Review the activity log in the CEP panel
+1. Enable debug mode:
+   ```bash
+   cd cep-extension
+   ./enable-debug-mode.sh
+   ```
+2. Restart After Effects
+3. Check Window > Extensions > AE MCP Bridge
+
+### Commands Not Processing
+
+1. Verify "Auto Process: ON" in the extension panel
+2. Check `~/Documents/ae-mcp-commands/` for command files
+3. Look for errors in the extension's activity log
+4. Ensure After Effects has a project open
+
+### Common Issues
+
+- **"Script access denied"**: Enable "Allow Scripts to Write Files" in AE Preferences
+- **Extension won't load**: Run the debug mode enabler and restart
+- **Commands timeout**: Check if After Effects is responding
+
+## Development
+
+### Project Structure
+
+```
+ae-mcp/
+├── src/                    # TypeScript source
+│   ├── server/            # MCP server implementation
+│   │   └── tools/        # Tool definitions
+│   ├── ae-integration/   # After Effects communication
+│   └── types/           # Type definitions
+├── cep-extension/       # CEP extension
+│   ├── CSXS/           # Extension manifest
+│   ├── jsx/            # ExtendScript code
+│   ├── js/             # Panel JavaScript
+│   └── css/            # Panel styles
+└── dist/               # Compiled output
+```
+
+### Adding New Tools
+
+1. Create tool definition in `src/server/tools/`
+2. Implement ExtendScript generation
+3. Add to appropriate tool category
+4. Build and test
+
+### Testing
+
+```bash
+# Run tests
+npm test
+
+# Test individual commands
+node dist/stdio-server-hybrid.js
+```
+
+## Examples
+
+See the `examples/` directory for usage examples.
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details
