@@ -6,10 +6,8 @@ export const projectGenerators: ScriptGeneratorModule = {
     app.newProject();
     
     var project = app.project;
-    ${params.settings ? `
-      if (${params.settings.frameRate}) {
-        // Default frame rate will be used for new comps
-      }
+    ${params.settings && params.settings.frameRate ? `
+      // Default frame rate will be used for new comps: ${params.settings.frameRate}
     ` : ''}
     
     return {

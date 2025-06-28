@@ -188,9 +188,23 @@ export class ScriptGenerator {
       try {
         ${script}
       } catch (error) {
+        var errorMessage = "Unknown error";
+        if (error) {
+          if (typeof error === "string") {
+            errorMessage = error;
+          } else if (error.message) {
+            errorMessage = error.message;
+          } else if (error.toString && typeof error.toString === "function") {
+            try {
+              errorMessage = error.toString();
+            } catch (e) {
+              errorMessage = "Error converting error to string";
+            }
+          }
+        }
         return {
           success: false,
-          error: error.toString()
+          error: errorMessage
         };
       }
     })();

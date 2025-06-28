@@ -3,11 +3,23 @@ import { helpers } from './helpers.js';
 
 export const utilityGenerators: ScriptGeneratorModule = {
   ping: () => `
+    function pad(num) {
+      return (num < 10 ? "0" : "") + num;
+    }
+    
+    var now = new Date();
+    var timestamp = now.getFullYear() + "-" + 
+                   pad(now.getMonth() + 1) + "-" + 
+                   pad(now.getDate()) + "T" + 
+                   pad(now.getHours()) + ":" + 
+                   pad(now.getMinutes()) + ":" + 
+                   pad(now.getSeconds()) + "Z";
+    
     return {
       success: true,
       data: {
         message: "pong",
-        timestamp: new Date().toISOString()
+        timestamp: timestamp
       }
     };
   `,

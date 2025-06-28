@@ -158,8 +158,16 @@ export class AEFileCommunicator {
               pending.resolve(response.result.data);
             } else {
               // Handle error response
-              const errorMessage = response.result.error?.message || 'Unknown error';
-              const errorCode = response.result.error?.code || 'UNKNOWN_ERROR';
+              let errorMessage = 'Unknown error';
+              let errorCode = 'UNKNOWN_ERROR';
+              
+              if (response.result.error && typeof response.result.error === 'object') {
+                errorMessage = response.result.error.message || errorMessage;
+                errorCode = response.result.error.code || errorCode;
+              } else if (typeof response.result.error === 'string') {
+                errorMessage = response.result.error;
+              }
+              
               pending.reject(new AEError(errorMessage, errorCode));
             }
           } else {
