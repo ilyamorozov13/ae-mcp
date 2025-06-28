@@ -6,6 +6,11 @@ import { AEFileCommunicator } from './ae-integration/file-communicator.js';
 import { projectTools } from './server/tools/projectTools.js';
 import { compositionTools } from './server/tools/compositionTools.js';
 import { layerTools } from './server/tools/layerTools.js';
+import { advancedLayerTools } from './server/tools/advancedLayerTools.js';
+import { expressionTools } from './server/tools/expressionTools.js';
+import { maskTools } from './server/tools/maskTools.js';
+import { textTools } from './server/tools/textTools.js';
+import { keyframeTools } from './server/tools/keyframeTools.js';
 import { renderTools } from './server/tools/renderTools.js';
 import { batchTools } from './server/tools/batchTools.js';
 import { systemTools } from './server/tools/systemTools.js';
@@ -60,6 +65,11 @@ class StdioMCPServer {
       ...projectTools,
       ...compositionTools,
       ...layerTools,
+      ...advancedLayerTools,
+      ...expressionTools,
+      ...maskTools,
+      ...textTools,
+      ...keyframeTools,
       ...renderTools,
       ...batchTools
     ];
