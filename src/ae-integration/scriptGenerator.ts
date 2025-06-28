@@ -5,6 +5,35 @@ export class ScriptGenerator {
     this.generators.open_project = this.generators.openProject;
     this.generators.save_project = this.generators.saveProject;
     this.generators.get_project_info = this.generators.getProjectInfo;
+    this.generators.create_composition = this.generators.createComposition;
+    this.generators.modify_composition = this.generators.modifyComposition;
+    this.generators.list_compositions = this.generators.listCompositions;
+    this.generators.get_composition_info = this.generators.getCompositionInfo;
+    this.generators.add_solid_layer = this.generators.addSolidLayer;
+    this.generators.add_text_layer = this.generators.addTextLayer;
+    this.generators.add_shape_layer = this.generators.addShapeLayer;
+    this.generators.create_layer = this.generators.createLayer;
+    this.generators.modify_layer_properties = this.generators.modifyLayerProperties;
+    this.generators.duplicate_layer = this.generators.duplicateLayer;
+    this.generators.delete_layer = this.generators.deleteLayer;
+    this.generators.reorder_layers = this.generators.reorderLayers;
+    this.generators.set_keyframe = this.generators.setKeyframe;
+    this.generators.apply_effect = this.generators.applyEffect;
+    this.generators.add_to_render_queue = this.generators.addToRenderQueue;
+    this.generators.start_render = this.generators.startRender;
+    this.generators.get_render_queue = this.generators.getRenderQueue;
+    this.generators.batch_execute = this.generators.batchExecute;
+    this.generators.batch_keyframes = this.generators.batchKeyframes;
+    this.generators.batch_create_layers = this.generators.batchCreateLayers;
+    this.generators.close_project = this.generators.closeProject;
+    this.generators.import_footage = this.generators.importFootage;
+    this.generators.pause_render = this.generators.pauseRender;
+    this.generators.stop_render = this.generators.stopRender;
+    this.generators.clear_render_queue = this.generators.clearRenderQueue;
+    this.generators.export_frame = this.generators.exportFrame;
+    this.generators.batch_render = this.generators.batchRender;
+    this.generators.duplicate_composition = this.generators.duplicateComposition;
+    this.generators.delete_composition = this.generators.deleteComposition;
   }
 
   generate(command: string, params: any): string {
@@ -80,35 +109,7 @@ export class ScriptGenerator {
       };
     `,
     
-    create_composition: function(params: any) { return this.createComposition.call(this, params); },
-    modify_composition: function(params: any) { return this.modifyComposition.call(this, params); },
-    list_compositions: function(params: any) { return this.listCompositions.call(this, params); },
-    get_composition_info: function(params: any) { return this.getCompositionInfo.call(this, params); },
-    add_solid_layer: function(params: any) { return this.addSolidLayer.call(this, params); },
-    add_text_layer: function(params: any) { return this.addTextLayer.call(this, params); },
-    add_shape_layer: function(params: any) { return this.addShapeLayer.call(this, params); },
-    create_layer: function(params: any) { return this.createLayer.call(this, params); },
-    modify_layer_properties: function(params: any) { return this.modifyLayerProperties.call(this, params); },
-    duplicate_layer: function(params: any) { return this.duplicateLayer.call(this, params); },
-    delete_layer: function(params: any) { return this.deleteLayer.call(this, params); },
-    reorder_layers: function(params: any) { return this.reorderLayers.call(this, params); },
-    set_keyframe: function(params: any) { return this.setKeyframe.call(this, params); },
-    apply_effect: function(params: any) { return this.applyEffect.call(this, params); },
-    add_to_render_queue: function(params: any) { return this.addToRenderQueue.call(this, params); },
-    start_render: function(params: any) { return this.startRender.call(this, params); },
-    get_render_queue: function(params: any) { return this.getRenderQueue.call(this, params); },
-    batch_execute: function(params: any) { return this.batchExecute.call(this, params); },
-    batch_keyframes: function(params: any) { return this.batchKeyframes.call(this, params); },
-    batch_create_layers: function(params: any) { return this.batchCreateLayers.call(this, params); },
-    close_project: function(params: any) { return this.closeProject.call(this, params); },
-    import_footage: function(params: any) { return this.importFootage.call(this, params); },
-    pause_render: function(params: any) { return this.pauseRender.call(this, params); },
-    stop_render: function(params: any) { return this.stopRender.call(this, params); },
-    clear_render_queue: function(params: any) { return this.clearRenderQueue.call(this, params); },
-    export_frame: function(params: any) { return this.exportFrame.call(this, params); },
-    batch_render: function(params: any) { return this.batchRender.call(this, params); },
-    duplicate_composition: function(params: any) { return this.duplicateComposition.call(this, params); },
-    delete_composition: function(params: any) { return this.deleteComposition.call(this, params); },
+    // These will be set up as aliases in the constructor
     
     // Original camelCase implementations
     createProject: (params: { name: string; settings?: any }) => `
