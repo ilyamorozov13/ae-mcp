@@ -22,6 +22,7 @@ A Model Context Protocol (MCP) server that enables AI assistants to interact wit
     }
 ```
 - And it worked. My wife thinks I should try to sell this (did interrupt one vacation day to be fair). Maybe in the future.
+- You can use tail `ae-mcp-server.log` to check for logs. Haven't explored what it can do too much - maybe this weekend more...
 
 ## Overview
 
