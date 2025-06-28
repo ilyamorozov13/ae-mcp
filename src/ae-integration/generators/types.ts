@@ -7,4 +7,5 @@ export interface ScriptGeneratorHelpers {
   stringify: (value: any) => string;
   conditional: (condition: boolean | undefined | null, trueCode: string, falseCode?: string) => string;
   valueOrDefault: (value: any, defaultValue: any) => string;
+  generatePropertyNavigation: (propertyPath: string) => string;
 }

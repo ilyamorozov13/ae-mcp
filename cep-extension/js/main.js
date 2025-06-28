@@ -45,7 +45,6 @@
             status: document.getElementById('status'),
             statusIndicator: document.getElementById('statusIndicator'),
             statusText: document.getElementById('statusText'),
-            btnProcess: document.getElementById('btnProcess'),
             btnClearLog: document.getElementById('btnClearLog'),
             btnOpenFolder: document.getElementById('btnOpenFolder'),
             btnToggleAuto: document.getElementById('btnToggleAuto'),
@@ -62,7 +61,6 @@
      * Set up event listeners
      */
     function setupEventListeners() {
-        elements.btnProcess.addEventListener('click', processCommands);
         elements.btnClearLog.addEventListener('click', clearLog);
         elements.btnOpenFolder.addEventListener('click', openCommandsFolder);
         elements.btnToggleAuto.addEventListener('click', toggleAutoProcess);

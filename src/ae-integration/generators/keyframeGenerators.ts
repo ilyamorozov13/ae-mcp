@@ -35,6 +35,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }
@@ -160,6 +168,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }
@@ -167,6 +183,11 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       if (!prop) {
         throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
       }
+    }
+    
+    // Check if property has keyframes
+    if (prop.numKeys === 0) {
+      throw new Error("Property has no keyframes to apply easing to");
     }
     
     var keyIndices = ${params.keyframeIndices ? JSON.stringify(params.keyframeIndices) : 'null'};
@@ -197,6 +218,8 @@ export const keyframeGenerators: ScriptGeneratorModule = {
         break;
     }
     
+    var modifiedCount = 0;
+    
     // Apply to each keyframe
     for (var i = 0; i < keyIndices.length; i++) {
       var keyIndex = keyIndices[i];
@@ -209,6 +232,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
         } else {
           prop.setTemporalEaseAtKey(keyIndex, [easeIn], [easeOut]);
         }
+        modifiedCount++;
       }
     }
     
@@ -216,8 +240,10 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       success: true,
       data: {
         property: "${helpers.escapeString(params.propertyPath)}",
-        keyframesModified: keyIndices.length,
-        easeType: easeType
+        keyframesModified: modifiedCount,
+        totalKeyframes: prop.numKeys,
+        easeType: easeType,
+        propertyType: prop.propertyValueType
       }
     };
   `,
@@ -248,6 +274,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }
@@ -259,7 +293,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     
     var keyIndex = ${params.keyframeIndex};
     if (keyIndex < 1 || keyIndex > prop.numKeys) {
-      throw new Error("Invalid keyframe index");
+      throw new Error("Invalid keyframe index. Property has " + prop.numKeys + " keyframes");
     }
     
     // Get current ease values
@@ -319,6 +353,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }
@@ -330,7 +372,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     
     var keyIndex = ${params.keyframeIndex};
     if (keyIndex < 1 || keyIndex > prop.numKeys) {
-      throw new Error("Invalid keyframe index");
+      throw new Error("Invalid keyframe index. Property has " + prop.numKeys + " keyframes");
     }
     
     var inEase = [];
@@ -432,6 +474,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }
@@ -443,7 +493,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     
     var keyIndex = ${params.keyframeIndex};
     if (keyIndex < 1 || keyIndex > prop.numKeys) {
-      throw new Error("Invalid keyframe index");
+      throw new Error("Invalid keyframe index. Property has " + prop.numKeys + " keyframes");
     }
     
     var typeMap = {
@@ -514,6 +564,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }
@@ -696,6 +754,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }
@@ -783,6 +849,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }
@@ -853,6 +927,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       var part = pathParts[i];
       if (part === "Transform" && prop === layer) {
         prop = prop.property("ADBE Transform Group");
+      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Position");
+      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Scale");
+      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
+        prop = prop.property("ADBE Rotate Z");
+      } else if (part === "Opacity" && prop === layer) {
+        prop = prop.property("ADBE Opacity");
       } else {
         prop = prop.property(part);
       }

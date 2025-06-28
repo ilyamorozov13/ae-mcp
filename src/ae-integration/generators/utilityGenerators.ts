@@ -2,24 +2,24 @@ import { ScriptGeneratorModule } from './types.js';
 import { helpers } from './helpers.js';
 
 export const utilityGenerators: ScriptGeneratorModule = {
-  ping: () => `
-    var now = new Date();
-    var timestamp = now.getFullYear() + '-' + 
-                   ('0' + (now.getMonth() + 1)).slice(-2) + '-' + 
-                   ('0' + now.getDate()).slice(-2) + 'T' + 
-                   ('0' + now.getHours()).slice(-2) + ':' + 
-                   ('0' + now.getMinutes()).slice(-2) + ':' + 
-                   ('0' + now.getSeconds()).slice(-2) + '.' + 
-                   ('00' + now.getMilliseconds()).slice(-3) + 'Z';
-    
-    return {
-      success: true,
-      data: {
-        message: "pong",
-        timestamp: timestamp
-      }
-    };
-  `,
+  ping: () => {
+    return 'var now = new Date();\n' +
+    'var timestamp = now.getFullYear() + "-" + \n' +
+    '               ("0" + (now.getMonth() + 1)).slice(-2) + "-" + \n' +
+    '               ("0" + now.getDate()).slice(-2) + "T" + \n' +
+    '               ("0" + now.getHours()).slice(-2) + ":" + \n' +
+    '               ("0" + now.getMinutes()).slice(-2) + ":" + \n' +
+    '               ("0" + now.getSeconds()).slice(-2) + "." + \n' +
+    '               ("00" + now.getMilliseconds()).slice(-3) + "Z";\n' +
+    '\n' +
+    'return {\n' +
+    '  success: true,\n' +
+    '  data: {\n' +
+    '    message: "pong",\n' +
+    '    timestamp: timestamp\n' +
+    '  }\n' +
+    '};';
+  },
   
   getAeVersion: () => `
     var versionString = app.version;
@@ -48,24 +48,39 @@ export const utilityGenerators: ScriptGeneratorModule = {
     };
   `,
   
-  executeScript: (params: { script: string; undoGroupName?: string; wrapInTransaction?: boolean }) => `
-    ${params.wrapInTransaction !== false ? `app.beginUndoGroup("${helpers.escapeString(params.undoGroupName || 'Script Execution')}");` : ''}
+  executeScript: (params: { script: string; undoGroupName?: string; wrapInTransaction?: boolean }) => {
+    let script = '';
     
-    try {
-      // Execute the provided script
-      ${params.script}
-      
-      ${params.wrapInTransaction !== false ? `app.endUndoGroup();` : ''}
-      
-      return {
-        success: true,
-        data: {
-          message: "Script executed successfully"
-        }
-      };
-    } catch (error) {
-      ${params.wrapInTransaction !== false ? `app.endUndoGroup();` : ''}
-      throw error;
+    // Add beginUndoGroup if needed
+    if (params.wrapInTransaction !== false) {
+      script += 'app.beginUndoGroup("' + helpers.escapeString(params.undoGroupName || 'Script Execution') + '");\n';
     }
-  `
+    
+    script += 'try {\n';
+    script += '  // Execute the provided script\n';
+    script += '  ' + params.script + '\n';
+    
+    // Add endUndoGroup if needed
+    if (params.wrapInTransaction !== false) {
+      script += '  app.endUndoGroup();\n';
+    }
+    
+    script += '  return {\n';
+    script += '    success: true,\n';
+    script += '    data: {\n';
+    script += '      message: "Script executed successfully"\n';
+    script += '    }\n';
+    script += '  };\n';
+    script += '} catch (error) {\n';
+    
+    // Add endUndoGroup in catch block if needed
+    if (params.wrapInTransaction !== false) {
+      script += '  app.endUndoGroup();\n';
+    }
+    
+    script += '  throw error;\n';
+    script += '}';
+    
+    return script;
+  }
 };

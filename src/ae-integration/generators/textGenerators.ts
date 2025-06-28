@@ -77,8 +77,7 @@ export const textGenerators: ScriptGeneratorModule = {
       ${params.sourceText.baselineShift !== undefined ? `textDocument.baselineShift = ${params.sourceText.baselineShift};` : ''}
       ${params.sourceText.verticalScale !== undefined ? `textDocument.verticalScale = ${params.sourceText.verticalScale};` : ''}
       ${params.sourceText.horizontalScale !== undefined ? `textDocument.horizontalScale = ${params.sourceText.horizontalScale};` : ''}
-      ${params.sourceText.allCaps !== undefined ? `textDocument.allCaps = ${params.sourceText.allCaps};` : ''}
-      ${params.sourceText.smallCaps !== undefined ? `textDocument.smallCaps = ${params.sourceText.smallCaps};` : ''}
+      // Note: allCaps and smallCaps are read-only properties in After Effects and cannot be set directly
     ` : ''}
     
     // Apply the text document
@@ -244,36 +243,68 @@ export const textGenerators: ScriptGeneratorModule = {
     
     // Configure selector
     var selectors = animator.property("ADBE Text Selectors");
-    var selector = selectors.property(1); // Default range selector
+    
+    // Check if there's already a default selector
+    var selector = null;
+    if (selectors.numProperties > 0) {
+      selector = selectors.property(1);
+    } else {
+      // Add a range selector if none exists
+      selector = selectors.addProperty("ADBE Text Selector");
+    }
     
     ${params.selector ? `
       var selectorConfig = ${JSON.stringify(params.selector)};
       
       // Set selector type
       ${params.selector.type === 'wiggly' ? `
-        // Replace with wiggly selector
-        selector.remove();
+        // Replace with wiggly selector if requested
+        if (selector) {
+          selector.remove();
+        }
         selector = selectors.addProperty("ADBE Text Wiggly Selector");
       ` : ''}
       
       // Configure range selector properties
-      if (selector.matchName === "ADBE Text Selector") {
-        ${params.selector.basedOn ? `
-          var basedOnMap = {
-            "characters": 1,
-            "charactersExcludingSpaces": 2,
-            "words": 3,
-            "lines": 4
-          };
-          var basedOn = basedOnMap["${params.selector.basedOn}"];
-          if (basedOn) {
-            selector.property("ADBE Text Range Units").setValue(basedOn);
-          }
-        ` : ''}
-        
-        ${params.selector.start !== undefined ? `selector.property("ADBE Text Range Start").setValue(${params.selector.start});` : ''}
-        ${params.selector.end !== undefined ? `selector.property("ADBE Text Range End").setValue(${params.selector.end});` : ''}
-        ${params.selector.offset !== undefined ? `selector.property("ADBE Text Range Offset").setValue(${params.selector.offset});` : ''}
+      if (selector && selector.matchName === "ADBE Text Selector") {
+        try {
+          ${params.selector.basedOn ? `
+            var basedOnMap = {
+              "characters": 1,
+              "charactersExcludingSpaces": 2,
+              "words": 3,
+              "lines": 4
+            };
+            var basedOn = basedOnMap["${params.selector.basedOn}"];
+            if (basedOn) {
+              var rangeUnits = selector.property("ADBE Text Range Units");
+              if (rangeUnits) {
+                rangeUnits.setValue(basedOn);
+              }
+            }
+          ` : ''}
+          
+          ${params.selector.start !== undefined ? `
+            var rangeStart = selector.property("ADBE Text Range Start");
+            if (rangeStart) {
+              rangeStart.setValue(${params.selector.start});
+            }
+          ` : ''}
+          ${params.selector.end !== undefined ? `
+            var rangeEnd = selector.property("ADBE Text Range End");
+            if (rangeEnd) {
+              rangeEnd.setValue(${params.selector.end});
+            }
+          ` : ''}
+          ${params.selector.offset !== undefined ? `
+            var rangeOffset = selector.property("ADBE Text Range Offset");
+            if (rangeOffset) {
+              rangeOffset.setValue(${params.selector.offset});
+            }
+          ` : ''}
+        } catch (e) {
+          // Ignore selector configuration errors
+        }
       }
     ` : ''}
     

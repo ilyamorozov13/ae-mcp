@@ -42,7 +42,7 @@ export const layerGenerators: ScriptGeneratorModule = {
     }
     
     var layer = comp.layers.addText("${helpers.escapeString(params.text)}");
-    ${params.name ? `layer.name = "${helpers.escapeString(params.name)}";` : ''}
+    " + (params.name ? 'layer.name = "' + helpers.escapeString(params.name) + '";' : '') + "
     
     return {
       success: true,
@@ -65,7 +65,7 @@ export const layerGenerators: ScriptGeneratorModule = {
     }
     
     var layer = comp.layers.addShape();
-    ${params.name ? `layer.name = "${helpers.escapeString(params.name)}";` : ''}
+    " + (params.name ? 'layer.name = "' + helpers.escapeString(params.name) + '";' : '') + "
     
     // Parse properties
     var props = ${params.properties ? JSON.stringify(params.properties) : '{}'};
@@ -169,8 +169,8 @@ export const layerGenerators: ScriptGeneratorModule = {
     }
     
     var layer = comp.layers.addNull();
-    ${params.name ? `layer.name = "${helpers.escapeString(params.name)}";` : ''}
-    ${params.is3D ? `layer.threeDLayer = true;` : ''}
+    " + (params.name ? 'layer.name = "' + helpers.escapeString(params.name) + '";' : '') + "
+    " + (params.is3D ? 'layer.threeDLayer = true;' : '') + "
     
     return {
       success: true,
@@ -230,25 +230,13 @@ export const layerGenerators: ScriptGeneratorModule = {
       }
     }
     
-    ${params.properties.position ? `
-    var positionProp = layer.property("Position");
-    setPropertyValue(positionProp, [${params.properties.position.join(',')}]);
-    ` : ''}
+    " + (params.properties.position ? '\n    var positionProp = layer.property("Position");\n    setPropertyValue(positionProp, [' + params.properties.position.join(',') + ']);\n    ' : '') + "
     
-    ${params.properties.scale ? `
-    var scaleProp = layer.property("Scale");
-    setPropertyValue(scaleProp, [${params.properties.scale.join(',')}]);
-    ` : ''}
+    " + (params.properties.scale ? '\n    var scaleProp = layer.property("Scale");\n    setPropertyValue(scaleProp, [' + params.properties.scale.join(',') + ']);\n    ' : '') + "
     
-    ${params.properties.rotation ? `
-    var rotationProp = layer.property("Rotation");
-    setPropertyValue(rotationProp, ${params.properties.rotation});
-    ` : ''}
+    " + (params.properties.rotation !== undefined ? '\n    var rotationProp = layer.property("Rotation");\n    setPropertyValue(rotationProp, ' + params.properties.rotation + ');\n    ' : '') + "
     
-    ${params.properties.opacity ? `
-    var opacityProp = layer.property("Opacity");
-    setPropertyValue(opacityProp, ${params.properties.opacity});
-    ` : ''}
+    " + (params.properties.opacity !== undefined ? '\n    var opacityProp = layer.property("Opacity");\n    setPropertyValue(opacityProp, ' + params.properties.opacity + ');\n    ' : '') + "
     
     return {
       success: true,
