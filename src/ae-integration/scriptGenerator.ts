@@ -360,7 +360,7 @@ export class ScriptGenerator {
       }
       
       var layer = comp.layers.addSolid(
-        [${params.color?.join(',') || '1,1,1'}],
+        [${params.color ? params.color.join(',') : '1,1,1'}],
         "${this.escapeString(params.name || 'Solid')}",
         ${params.width || 'comp.width'},
         ${params.height || 'comp.height'},
@@ -978,12 +978,18 @@ export class ScriptGenerator {
           
           switch(type) {
             case "solid":
-              var color = layerDef.properties && layerDef.properties.color || [0, 0, 0];
+              var color = [0, 0, 0];
+              if (layerDef.properties && layerDef.properties.color) {
+                color = layerDef.properties.color;
+              }
               layer = comp.layers.addSolid(color, layerDef.name, comp.width, comp.height, 1);
               break;
               
             case "text":
-              var text = layerDef.properties && layerDef.properties.text || layerDef.name;
+              var text = layerDef.name;
+              if (layerDef.properties && layerDef.properties.text) {
+                text = layerDef.properties.text;
+              }
               layer = comp.layers.addText(text);
               layer.name = layerDef.name;
               break;
