@@ -5,7 +5,9 @@ export class ScriptGenerator {
       throw new Error(`Unknown command: ${command}`);
     }
     
-    return this.wrapInTryCatch(generator.call(this, params));
+    // Call the generator function with 'this' context
+    const script = generator.call(this, params);
+    return this.wrapInTryCatch(script);
   }
   
   private wrapInTryCatch(script: string): string {
@@ -35,35 +37,44 @@ export class ScriptGenerator {
   }
   
   private generators: { [key: string]: (params: any) => string } = {
-    // System/diagnostic commands
-    ping: () => this.generators.pingCommand({}),
-    get_ae_version: () => this.generators.getAEVersion({}),
+    // System/diagnostic commands are defined later in this object
+    ping: function(params: any) { return this.pingCommand.call(this, params); },
+    get_ae_version: function(params: any) { return this.getAEVersion.call(this, params); },
     
     // Map underscore names to camelCase implementations
-    create_project: (params: any) => this.generators.createProject(params),
-    open_project: (params: any) => this.generators.openProject(params),
-    save_project: (params: any) => this.generators.saveProject(params),
-    get_project_info: (params: any) => this.generators.getProjectInfo(params),
-    create_composition: (params: any) => this.generators.createComposition(params),
-    modify_composition: (params: any) => this.generators.modifyComposition(params),
-    list_compositions: (params: any) => this.generators.listCompositions(params),
-    get_composition_info: (params: any) => this.generators.getCompositionInfo(params),
-    add_solid_layer: (params: any) => this.generators.addSolidLayer(params),
-    add_text_layer: (params: any) => this.generators.addTextLayer(params),
-    add_shape_layer: (params: any) => this.generators.addShapeLayer(params),
-    create_layer: (params: any) => this.generators.createLayer(params),
-    modify_layer_properties: (params: any) => this.generators.modifyLayerProperties(params),
-    duplicate_layer: (params: any) => this.generators.duplicateLayer(params),
-    delete_layer: (params: any) => this.generators.deleteLayer(params),
-    reorder_layers: (params: any) => this.generators.reorderLayers(params),
-    set_keyframe: (params: any) => this.generators.setKeyframe(params),
-    apply_effect: (params: any) => this.generators.applyEffect(params),
-    add_to_render_queue: (params: any) => this.generators.addToRenderQueue(params),
-    start_render: (params: any) => this.generators.startRender(params),
-    get_render_queue: (params: any) => this.generators.getRenderQueue(params),
-    batch_execute: (params: any) => this.generators.batchExecute(params),
-    batch_keyframes: (params: any) => this.generators.batchKeyframes(params),
-    batch_create_layers: (params: any) => this.generators.batchCreateLayers(params),
+    create_project: function(params: any) { return this.createProject.call(this, params); },
+    open_project: function(params: any) { return this.openProject.call(this, params); },
+    save_project: function(params: any) { return this.saveProject.call(this, params); },
+    get_project_info: function(params: any) { return this.getProjectInfo.call(this, params); },
+    create_composition: function(params: any) { return this.createComposition.call(this, params); },
+    modify_composition: function(params: any) { return this.modifyComposition.call(this, params); },
+    list_compositions: function(params: any) { return this.listCompositions.call(this, params); },
+    get_composition_info: function(params: any) { return this.getCompositionInfo.call(this, params); },
+    add_solid_layer: function(params: any) { return this.addSolidLayer.call(this, params); },
+    add_text_layer: function(params: any) { return this.addTextLayer.call(this, params); },
+    add_shape_layer: function(params: any) { return this.addShapeLayer.call(this, params); },
+    create_layer: function(params: any) { return this.createLayer.call(this, params); },
+    modify_layer_properties: function(params: any) { return this.modifyLayerProperties.call(this, params); },
+    duplicate_layer: function(params: any) { return this.duplicateLayer.call(this, params); },
+    delete_layer: function(params: any) { return this.deleteLayer.call(this, params); },
+    reorder_layers: function(params: any) { return this.reorderLayers.call(this, params); },
+    set_keyframe: function(params: any) { return this.setKeyframe.call(this, params); },
+    apply_effect: function(params: any) { return this.applyEffect.call(this, params); },
+    add_to_render_queue: function(params: any) { return this.addToRenderQueue.call(this, params); },
+    start_render: function(params: any) { return this.startRender.call(this, params); },
+    get_render_queue: function(params: any) { return this.getRenderQueue.call(this, params); },
+    batch_execute: function(params: any) { return this.batchExecute.call(this, params); },
+    batch_keyframes: function(params: any) { return this.batchKeyframes.call(this, params); },
+    batch_create_layers: function(params: any) { return this.batchCreateLayers.call(this, params); },
+    close_project: function(params: any) { return this.closeProject.call(this, params); },
+    import_footage: function(params: any) { return this.importFootage.call(this, params); },
+    pause_render: function(params: any) { return this.pauseRender.call(this, params); },
+    stop_render: function(params: any) { return this.stopRender.call(this, params); },
+    clear_render_queue: function(params: any) { return this.clearRenderQueue.call(this, params); },
+    export_frame: function(params: any) { return this.exportFrame.call(this, params); },
+    batch_render: function(params: any) { return this.batchRender.call(this, params); },
+    duplicate_composition: function(params: any) { return this.duplicateComposition.call(this, params); },
+    delete_composition: function(params: any) { return this.deleteComposition.call(this, params); },
     
     // Original camelCase implementations
     createProject: (params: { name: string; settings?: any }) => `
@@ -1015,6 +1026,194 @@ export class ScriptGenerator {
           aeVersion: app.version,
           buildNumber: app.buildNumber
         }
+      };
+    `,
+    
+    closeProject: (params: { saveChanges?: boolean }) => `
+      if (app.project) {
+        if (${params.saveChanges || false}) {
+          app.project.save();
+        }
+        app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
+        return {
+          success: true,
+          data: { message: "Project closed" }
+        };
+      }
+      throw new Error("No project to close");
+    `,
+    
+    importFootage: (params: { filePath: string; folderName?: string }) => `
+      if (!app.project) {
+        throw new Error("No project is open");
+      }
+      
+      var file = new File("${this.escapeString(params.filePath)}");
+      if (!file.exists) {
+        throw new Error("File not found: " + file.fsName);
+      }
+      
+      var importOptions = new ImportOptions(file);
+      var footage = app.project.importFile(importOptions);
+      
+      ${params.folderName ? `
+      // Find or create folder
+      var folder = null;
+      for (var i = 1; i <= app.project.numItems; i++) {
+        var item = app.project.item(i);
+        if (item instanceof FolderItem && item.name === "${this.escapeString(params.folderName)}") {
+          folder = item;
+          break;
+        }
+      }
+      if (!folder) {
+        folder = app.project.items.addFolder("${this.escapeString(params.folderName)}");
+      }
+      footage.parentFolder = folder;
+      ` : ''}
+      
+      return {
+        success: true,
+        data: {
+          id: footage.id,
+          name: footage.name,
+          width: footage.width || 0,
+          height: footage.height || 0,
+          duration: footage.duration || 0
+        }
+      };
+    `,
+    
+    pauseRender: () => `
+      app.project.renderQueue.pauseRendering();
+      return {
+        success: true,
+        data: { message: "Render paused" }
+      };
+    `,
+    
+    stopRender: () => `
+      app.project.renderQueue.stopRendering();
+      return {
+        success: true,
+        data: { message: "Render stopped" }
+      };
+    `,
+    
+    clearRenderQueue: (params: { confirmClear: boolean }) => `
+      if (!${params.confirmClear}) {
+        throw new Error("confirmClear must be true to clear the render queue");
+      }
+      
+      var rq = app.project.renderQueue;
+      while (rq.numItems > 0) {
+        rq.item(rq.numItems).remove();
+      }
+      
+      return {
+        success: true,
+        data: { message: "Render queue cleared" }
+      };
+    `,
+    
+    exportFrame: (params: { compId: number; time: number; outputPath: string }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      comp.time = ${params.time};
+      comp.saveFrameToPng(comp.time, new File("${this.escapeString(params.outputPath)}"));
+      
+      return {
+        success: true,
+        data: {
+          outputPath: "${this.escapeString(params.outputPath)}",
+          time: ${params.time}
+        }
+      };
+    `,
+    
+    batchRender: (params: { compIds: number[]; outputDirectory: string; outputFormat?: string; outputModule?: string }) => `
+      var results = [];
+      var format = "${params.outputFormat || 'mp4'}";
+      
+      for (var i = 0; i < ${JSON.stringify(params.compIds)}.length; i++) {
+        var compId = ${JSON.stringify(params.compIds)}[i];
+        var comp = app.project.itemByID(compId);
+        
+        if (!comp || !(comp instanceof CompItem)) {
+          results.push({
+            compId: compId,
+            success: false,
+            error: "Composition not found"
+          });
+          continue;
+        }
+        
+        var outputPath = "${this.escapeString(params.outputDirectory)}" + "/" + comp.name + "." + format;
+        var rqItem = app.project.renderQueue.items.add(comp);
+        
+        ${params.outputModule ? `rqItem.outputModule(1).applyTemplate("${this.escapeString(params.outputModule)}");` : ''}
+        
+        rqItem.outputModule(1).file = new File(outputPath);
+        
+        results.push({
+          compId: compId,
+          success: true,
+          queueIndex: rqItem.index,
+          outputPath: outputPath
+        });
+      }
+      
+      return {
+        success: true,
+        data: {
+          queued: results.filter(function(r) { return r.success; }).length,
+          failed: results.filter(function(r) { return !r.success; }).length,
+          results: results
+        }
+      };
+    `,
+    
+    duplicateComposition: (params: { compId: number; newName: string }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var duplicate = comp.duplicate();
+      duplicate.name = "${this.escapeString(params.newName)}";
+      
+      return {
+        success: true,
+        data: {
+          id: duplicate.id,
+          name: duplicate.name,
+          width: duplicate.width,
+          height: duplicate.height,
+          duration: duplicate.duration,
+          frameRate: duplicate.frameRate
+        }
+      };
+    `,
+    
+    deleteComposition: (params: { compId: number; confirmDelete: boolean }) => `
+      if (!${params.confirmDelete}) {
+        throw new Error("confirmDelete must be true to delete a composition");
+      }
+      
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var compName = comp.name;
+      comp.remove();
+      
+      return {
+        success: true,
+        data: { message: "Composition '" + compName + "' deleted" }
       };
     `,
     
