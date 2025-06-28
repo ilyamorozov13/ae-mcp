@@ -45,6 +45,16 @@ export class AEFileCommunicator {
     this.logger.info('Starting file-based communication bridge');
     this.logger.info(`Commands directory: ${this.commandsDir}`);
     
+    // Check for .processed files to see if CEP extension is running
+    const files = fs.readdirSync(this.commandsDir);
+    const processedFiles = files.filter(f => f.endsWith('.processed'));
+    if (processedFiles.length > 0) {
+      this.logger.info(`Found ${processedFiles.length} processed command files - CEP extension appears to be active`);
+    } else {
+      this.logger.warn('No processed command files found - CEP extension may not be running in After Effects');
+      this.logger.warn('Please ensure the AE MCP Bridge panel is open in After Effects with Auto Process enabled');
+    }
+    
     // Start checking for responses
     this.startResponseChecker();
     this.isConnected = true;
@@ -72,11 +82,23 @@ export class AEFileCommunicator {
             continue;
           }
           
-          // Add small delay to ensure file is fully written
-          await new Promise(resolve => setTimeout(resolve, 50));
+          // Add longer delay to ensure file is fully written and closed
+          await new Promise(resolve => setTimeout(resolve, 100));
           
-          // Read response
-          const content = fs.readFileSync(filePath, 'utf8');
+          // Read response with retry logic
+          let content = '';
+          let retries = 3;
+          while (retries > 0) {
+            try {
+              content = fs.readFileSync(filePath, 'utf8');
+              break;
+            } catch (readErr) {
+              retries--;
+              if (retries === 0) throw readErr;
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
+          }
+          
           if (!content || content.trim().length === 0) {
             this.logger.warn(`Empty response file: ${file}`);
             continue;
@@ -101,11 +123,19 @@ export class AEFileCommunicator {
             // Clean up files
             try {
               fs.unlinkSync(filePath);
+              // Check for both the original and processed command file
               if (fs.existsSync(pending.commandFile)) {
                 fs.unlinkSync(pending.commandFile);
+              } else {
+                // Check for .processed version
+                const processedFile = pending.commandFile + '.processed';
+                if (fs.existsSync(processedFile)) {
+                  fs.unlinkSync(processedFile);
+                }
               }
             } catch (e) {
               // Ignore cleanup errors
+              this.logger.debug(`Cleanup error (non-critical): ${e}`);
             }
             
             // Resolve promise
@@ -146,17 +176,28 @@ export class AEFileCommunicator {
       const timeout = setTimeout(() => {
         this.pendingCommands.delete(id);
         
+        // Check if command was processed but response wasn't read
+        const processedFile = commandFile + '.processed';
+        const wasProcessed = fs.existsSync(processedFile);
+        
         // Log timeout details
         this.logger.error(`Command timeout for ${command}:`, {
           commandFile,
           responseFile,
           fileExists: fs.existsSync(commandFile),
+          processedExists: wasProcessed,
           responseExists: fs.existsSync(responseFile)
         });
+        
+        if (!wasProcessed && !fs.existsSync(responseFile)) {
+          this.logger.error('Command was not processed - CEP extension may not be running in After Effects');
+          this.logger.error('Please ensure the AE MCP Bridge panel is open with Auto Process enabled');
+        }
         
         // Clean up files
         try {
           if (fs.existsSync(commandFile)) fs.unlinkSync(commandFile);
+          if (fs.existsSync(processedFile)) fs.unlinkSync(processedFile);
           if (fs.existsSync(responseFile)) fs.unlinkSync(responseFile);
         } catch (e) {}
         

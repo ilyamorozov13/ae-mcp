@@ -8,6 +8,7 @@ import { compositionTools } from './server/tools/compositionTools.js';
 import { layerTools } from './server/tools/layerTools.js';
 import { renderTools } from './server/tools/renderTools.js';
 import { batchTools } from './server/tools/batchTools.js';
+import { systemTools } from './server/tools/systemTools.js';
 
 // Configure logger to file only (no console in stdio mode)
 const logger = winston.createLogger({
@@ -55,6 +56,7 @@ class StdioMCPServer {
 
   private setupTools() {
     const allTools = [
+      ...systemTools,
       ...projectTools,
       ...compositionTools,
       ...layerTools,
@@ -74,7 +76,10 @@ class StdioMCPServer {
       try {
         const message = JSON.parse(line);
         const response = await this.handleMessage(message);
-        this.sendResponse(response);
+        // Only send response if it's not null (notifications don't get responses)
+        if (response !== null) {
+          this.sendResponse(response);
+        }
       } catch (error: any) {
         logger.error('Error handling message:', error);
         this.sendResponse({
@@ -113,8 +118,13 @@ class StdioMCPServer {
           result = await this.handleInitialize(params);
           break;
         case 'initialized':
+        case 'notifications/initialized':
           this.initialized = true;
           logger.info('Server initialized');
+          // If it's a notification (no id), don't return a response
+          if (!id) {
+            return null;
+          }
           return { jsonrpc: '2.0', result: {}, id };
         case 'tools/list':
           result = await this.handleListTools();

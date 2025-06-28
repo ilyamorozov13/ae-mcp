@@ -111,7 +111,9 @@ function processCommands() {
                         // Mark as processed
                         processedCommands[file.name] = true;
                         
-                        // Archive the processed file (but not the response)
+                        // Archive the processed file AFTER ensuring response is written
+                        // Add a small delay to ensure file system has flushed the response
+                        $.sleep(100);
                         archiveCommand(file);
                     } else {
                         throw new Error("Failed to open response file for writing");
@@ -139,6 +141,8 @@ function processCommands() {
                     
                     // Still mark as processed and archive even on error
                     processedCommands[file.name] = true;
+                    // Add delay here too to ensure error response is written
+                    $.sleep(100);
                     archiveCommand(file);
                 } finally {
                     app.endUndoGroup();

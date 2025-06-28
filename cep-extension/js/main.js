@@ -17,6 +17,8 @@
     };
     var logEntries = [];
     var maxLogEntries = 100;
+    var recentErrors = []; // Track recent errors for persistent display
+    var maxRecentErrors = 5;
     
     // Status management
     var statusTimer = null;
@@ -51,7 +53,8 @@
             statErrors: document.getElementById('statErrors'),
             statLastCheck: document.getElementById('statLastCheck'),
             log: document.getElementById('log'),
-            logCount: document.getElementById('logCount')
+            logCount: document.getElementById('logCount'),
+            recentErrors: document.getElementById('recentErrors')
         };
     }
     
@@ -108,33 +111,45 @@
                     
                     if (response.errors > 0) {
                         stats.errors += response.errors;
-                        addLogEntry('Encountered ' + response.errors + ' error(s)', 'error');
-                        setStatus('error', 'Error');
+                        var errorMsg = 'Encountered ' + response.errors + ' error(s)';
+                        addLogEntry(errorMsg, 'error');
+                        addRecentError(errorMsg);
+                        setStatus('error', 'Error: ' + errorMsg);
                         
-                        // Clear error status after delay
+                        // Keep error status visible longer (5 seconds)
                         setTimeout(function() {
-                            setStatus('ready', 'Ready');
-                        }, minStatusDuration * 2);
+                            if (lastStatus === 'error') {
+                                setStatus('ready', 'Ready');
+                            }
+                        }, 5000);
                     }
                 } else {
-                    addLogEntry('Error: ' + response.error, 'error');
-                    setStatus('error', 'Error');
+                    var errorMsg = 'Error: ' + response.error;
+                    addLogEntry(errorMsg, 'error');
+                    addRecentError(errorMsg);
+                    setStatus('error', errorMsg);
                     stats.errors++;
                     
-                    // Clear error status after delay
+                    // Keep error status visible longer (5 seconds)
                     setTimeout(function() {
-                        setStatus('ready', 'Ready');
-                    }, minStatusDuration * 2);
+                        if (lastStatus === 'error') {
+                            setStatus('ready', 'Ready');
+                        }
+                    }, 5000);
                 }
             } catch (e) {
-                addLogEntry('Failed to process commands: ' + e.message, 'error');
-                setStatus('error', 'Error');
+                var errorMsg = 'Failed to process commands: ' + e.message;
+                addLogEntry(errorMsg, 'error');
+                addRecentError(errorMsg);
+                setStatus('error', 'Parse Error: ' + e.message);
                 stats.errors++;
                 
-                // Clear error status after delay
+                // Keep error status visible longer (5 seconds)
                 setTimeout(function() {
-                    setStatus('ready', 'Ready');
-                }, minStatusDuration * 2);
+                    if (lastStatus === 'error') {
+                        setStatus('ready', 'Ready');
+                    }
+                }, 5000);
             }
             
             updateStats();
@@ -146,8 +161,10 @@
      */
     function clearLog() {
         logEntries = [];
+        recentErrors = [];
         elements.log.innerHTML = '';
         elements.logCount.textContent = '0 entries';
+        renderRecentErrors();
         addLogEntry('Log cleared', 'info');
     }
     
@@ -228,6 +245,25 @@
     }
     
     /**
+     * Add error to recent errors list
+     */
+    function addRecentError(message) {
+        var error = {
+            time: new Date().toLocaleTimeString(),
+            message: message
+        };
+        
+        recentErrors.unshift(error);
+        
+        // Limit recent errors
+        if (recentErrors.length > maxRecentErrors) {
+            recentErrors = recentErrors.slice(0, maxRecentErrors);
+        }
+        
+        renderRecentErrors();
+    }
+    
+    /**
      * Render log entries
      */
     function renderLog() {
@@ -241,6 +277,31 @@
         elements.log.innerHTML = html;
         elements.logCount.textContent = logEntries.length + ' ' + 
                                        (logEntries.length === 1 ? 'entry' : 'entries');
+    }
+    
+    /**
+     * Render recent errors
+     */
+    function renderRecentErrors() {
+        if (!elements.recentErrors) {
+            return;
+        }
+        
+        if (recentErrors.length === 0) {
+            elements.recentErrors.style.display = 'none';
+            return;
+        }
+        
+        var html = '<div class="recent-errors-header">Recent Errors:</div>' +
+                   recentErrors.map(function(error) {
+                       return '<div class="recent-error-item">' +
+                              '<span class="error-time">' + error.time + '</span> ' +
+                              '<span class="error-message">' + escapeHtml(error.message) + '</span>' +
+                              '</div>';
+                   }).join('');
+        
+        elements.recentErrors.innerHTML = html;
+        elements.recentErrors.style.display = 'block';
     }
     
     /**

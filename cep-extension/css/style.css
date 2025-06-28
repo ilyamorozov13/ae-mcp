@@ -237,3 +237,42 @@ h1 {
 ::-webkit-scrollbar-thumb:hover {
     background: #505050;
 }
+
+/* Recent errors section */
+.recent-errors {
+    background: #3a1e1e;
+    border: 1px solid #6b2525;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 20px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.recent-errors-header {
+    color: #f44336;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.recent-error-item {
+    margin-bottom: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid #4a2020;
+}
+
+.recent-error-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.error-time {
+    color: #808080;
+    font-size: 12px;
+    margin-right: 8px;
+}
+
+.error-message {
+    color: #ff9999;
+    font-size: 13px;
+}

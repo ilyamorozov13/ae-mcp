@@ -35,6 +35,10 @@ export class ScriptGenerator {
   }
   
   private generators: { [key: string]: (params: any) => string } = {
+    // System/diagnostic commands
+    ping: () => this.generators.pingCommand({}),
+    get_ae_version: () => this.generators.getAEVersion({}),
+    
     // Map underscore names to camelCase implementations
     create_project: (params: any) => this.generators.createProject(params),
     open_project: (params: any) => this.generators.openProject(params),
@@ -351,6 +355,7 @@ export class ScriptGenerator {
     addShapeLayer: (params: {
       compId: number;
       name?: string;
+      shapeType?: string;
     }) => `
       var comp = app.project.itemByID(${params.compId});
       if (!comp || !(comp instanceof CompItem)) {
@@ -359,6 +364,40 @@ export class ScriptGenerator {
       
       var layer = comp.layers.addShape();
       ${params.name ? `layer.name = "${this.escapeString(params.name)}";` : ''}
+      
+      // Add shape content to make it visible
+      var shapeGroup = layer.property("Contents").addProperty("ADBE Vector Group");
+      var shapeType = "${params.shapeType || 'rectangle'}";
+      
+      // Add the shape path based on type
+      var shapePath;
+      if (shapeType === "rectangle") {
+        shapePath = shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Rect");
+        shapePath.property("Size").setValue([200, 200]);
+      } else if (shapeType === "ellipse") {
+        shapePath = shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Ellipse");
+        shapePath.property("Size").setValue([200, 200]);
+      } else if (shapeType === "polygon") {
+        shapePath = shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Star");
+        shapePath.property("Type").setValue(1); // 1 = polygon, 2 = star
+        shapePath.property("Points").setValue(6);
+        shapePath.property("Outer Radius").setValue(100);
+      } else if (shapeType === "star") {
+        shapePath = shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Star");
+        shapePath.property("Type").setValue(2); // 2 = star
+        shapePath.property("Points").setValue(5);
+        shapePath.property("Outer Radius").setValue(100);
+        shapePath.property("Inner Radius").setValue(50);
+      }
+      
+      // Add fill to make the shape visible
+      var fill = shapeGroup.property("Contents").addProperty("ADBE Vector Graphic - Fill");
+      fill.property("Color").setValue([1, 1, 1]); // White fill
+      
+      // Add stroke for better visibility
+      var stroke = shapeGroup.property("Contents").addProperty("ADBE Vector Graphic - Stroke");
+      stroke.property("Color").setValue([0, 0, 0]); // Black stroke
+      stroke.property("Stroke Width").setValue(2);
       
       return {
         success: true,
@@ -953,6 +992,43 @@ export class ScriptGenerator {
           total: layers.length,
           successful: results.filter(function(r) { return r.success; }).length,
           results: results
+        }
+      };
+    `,
+    
+    // System/diagnostic commands
+    pingCommand: () => `
+      var now = new Date();
+      var timestamp = now.getFullYear() + '-' + 
+                     ('0' + (now.getMonth() + 1)).slice(-2) + '-' + 
+                     ('0' + now.getDate()).slice(-2) + 'T' + 
+                     ('0' + now.getHours()).slice(-2) + ':' + 
+                     ('0' + now.getMinutes()).slice(-2) + ':' + 
+                     ('0' + now.getSeconds()).slice(-2) + '.' + 
+                     ('00' + now.getMilliseconds()).slice(-3) + 'Z';
+      
+      return {
+        success: true,
+        data: {
+          message: "Pong! CEP extension is active and processing commands.",
+          timestamp: timestamp,
+          aeVersion: app.version,
+          buildNumber: app.buildNumber
+        }
+      };
+    `,
+    
+    getAEVersion: () => `
+      return {
+        success: true,
+        data: {
+          version: app.version,
+          buildNumber: app.buildNumber,
+          buildName: app.buildName,
+          language: app.language,
+          locale: app.locale,
+          memoryInUse: app.memoryInUse,
+          projectName: app.project ? app.project.name : null
         }
       };
     `
