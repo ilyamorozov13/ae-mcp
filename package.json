@@ -2,7 +2,7 @@
   "name": "ae-mcp-server",
   "version": "1.0.0",
   "description": "Model Context Protocol server for Adobe After Effects",
-  "main": "dist/stdio-server-hybrid.js",
+  "main": "dist/stdio-server.js",
   "type": "module",
   "scripts": {
     "build": "tsc",

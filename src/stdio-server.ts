@@ -2,10 +2,12 @@
 import * as readline from 'readline';
 import winston from 'winston';
 import { AECommunicator } from './ae-integration/communicator.js';
+import { AEFileCommunicator } from './ae-integration/file-communicator.js';
 import { projectTools } from './server/tools/projectTools.js';
 import { compositionTools } from './server/tools/compositionTools.js';
 import { layerTools } from './server/tools/layerTools.js';
 import { renderTools } from './server/tools/renderTools.js';
+import { batchTools } from './server/tools/batchTools.js';
 
 // Configure logger to file only (no console in stdio mode)
 const logger = winston.createLogger({
@@ -20,13 +22,24 @@ const logger = winston.createLogger({
 });
 
 class StdioMCPServer {
-  private communicator: AECommunicator;
+  private communicator: AECommunicator | AEFileCommunicator;
   private tools: Map<string, any>;
   private rl: readline.Interface;
   private initialized = false;
+  private useFileBridge: boolean;
 
   constructor() {
-    this.communicator = new AECommunicator(logger);
+    // Check if we should use file-based communication
+    this.useFileBridge = process.env.AE_USE_FILE_BRIDGE === 'true';
+    
+    if (this.useFileBridge) {
+      logger.info('Using file-based communication bridge');
+      this.communicator = new AEFileCommunicator(logger);
+    } else {
+      logger.info('Using socket-based communication');
+      this.communicator = new AECommunicator(logger);
+    }
+    
     this.tools = new Map();
     
     // Set up stdio interface
@@ -45,7 +58,8 @@ class StdioMCPServer {
       ...projectTools,
       ...compositionTools,
       ...layerTools,
-      ...renderTools
+      ...renderTools,
+      ...batchTools
     ];
     
     allTools.forEach(tool => {
@@ -165,10 +179,19 @@ class StdioMCPServer {
     
     try {
       // Connect to AE bridge if not connected
-      await this.communicator.connect(
-        parseInt(process.env.AE_BRIDGE_PORT || '8090'),
-        'localhost'
-      );
+      if (this.useFileBridge) {
+        await this.communicator.connect();
+      } else {
+        await (this.communicator as AECommunicator).connect(
+          parseInt(process.env.AE_BRIDGE_PORT || '8090'),
+          'localhost'
+        );
+      }
+      
+      // Special handling for batch_execute
+      if (name === 'batch_execute') {
+        return await this.handleBatchExecute(args);
+      }
       
       const result = await this.communicator.executeCommand(name, args);
       
@@ -223,10 +246,15 @@ class StdioMCPServer {
     const { uri } = params;
     
     try {
-      await this.communicator.connect(
-        parseInt(process.env.AE_BRIDGE_PORT || '8090'),
-        'localhost'
-      );
+      // Connect if needed
+      if (this.useFileBridge) {
+        await this.communicator.connect();
+      } else {
+        await (this.communicator as AECommunicator).connect(
+          parseInt(process.env.AE_BRIDGE_PORT || '8090'),
+          'localhost'
+        );
+      }
       
       let data;
       switch (uri) {
@@ -265,7 +293,78 @@ class StdioMCPServer {
 
   start() {
     logger.info('Adobe After Effects MCP server started in stdio mode');
-    logger.info(`Expecting AE bridge on port ${process.env.AE_BRIDGE_PORT || '8090'}`);
+    if (this.useFileBridge) {
+      logger.info('Using file-based bridge - no port conflicts!');
+    } else {
+      logger.info(`Expecting AE socket bridge on port ${process.env.AE_BRIDGE_PORT || '8090'}`);
+    }
+  }
+  
+  private async handleBatchExecute(args: any): Promise<any> {
+    const { commands, sequential } = args;
+    
+    if (!Array.isArray(commands) || commands.length === 0) {
+      throw new Error("Commands must be a non-empty array");
+    }
+    
+    logger.info(`Executing batch of ${commands.length} commands (${sequential ? 'sequential' : 'parallel'})`);
+    
+    const results: any[] = [];
+    
+    if (sequential) {
+      // Execute commands one by one
+      for (const cmd of commands) {
+        try {
+          const result = await this.communicator.executeCommand(cmd.tool, cmd.params);
+          results.push({
+            id: cmd.id || cmd.tool,
+            success: true,
+            result
+          });
+        } catch (error: any) {
+          results.push({
+            id: cmd.id || cmd.tool,
+            success: false,
+            error: error.message || error.toString()
+          });
+        }
+      }
+    } else {
+      // Execute commands in parallel
+      const promises = commands.map(async (cmd) => {
+        try {
+          const result = await this.communicator.executeCommand(cmd.tool, cmd.params);
+          return {
+            id: cmd.id || cmd.tool,
+            success: true,
+            result
+          };
+        } catch (error: any) {
+          return {
+            id: cmd.id || cmd.tool,
+            success: false,
+            error: error.message || error.toString()
+          };
+        }
+      });
+      
+      const parallelResults = await Promise.all(promises);
+      results.push(...parallelResults);
+    }
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            total: commands.length,
+            successful: results.filter(r => r.success).length,
+            failed: results.filter(r => !r.success).length,
+            results
+          }, null, 2)
+        }
+      ]
+    };
   }
 }
 

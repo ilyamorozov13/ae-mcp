@@ -4,14 +4,18 @@ A Model Context Protocol (MCP) server that enables AI assistants to interact wit
 
 ## Background
 
+<<<<<<< HEAD
 - I signed up for https://schoolofmotion.com/ again on my vacation. And started to go through Joey's very first lesson (Desk Unmessed) to take an inventory of where I'm at. I animated one item, and then got to thinking... it'd be nice to use MCP here and connect Amazon Q or Claude Code and "repeat the animation" for the other shapes I just did.
+=======
+- I signed up for https://schoolofmotion.com/ again on my vacation. And started to go through Joey's very first lesson for Animation Bootcamp (Desk Unmessed) to take an inventory of where I'm at. I animated one item, and then got to thinking... it'd be nice to use MCP here and connect Amazon Q or Claude Code and "repeat the animation" for the other shapes I just did.
+>>>>>>> d24fd1d (docs: add project background and origin story)
 - I explored what was out there and mostly found: https://github.com/Dakkshin/after-effects-mcp. But it was originally focused on Windows. I was able to use Claude Code to get it to run on macOS but I couldn't get  it to take commands.
 - So I used Claude Code to create a BRD and design doc (pretty basic 1-2 sentence prompt: "Can you plan out how you’d create an MCP server for Adobe after effects? Maybe create a requirements doc and then technical design doc with instructions on how to implement?"). Then I copied the markdown files into a new folder and prompted to create an app. I asked why not "rust" but Adobe CEP is more JavaScript oriented so it made sense to stick with TypeScript. Original prompts were focused around just doing a script because CEP didn't work at first. So again I went back to Claude Desktop (Opus) and prompted with "Can we research how to create CEP plugins for adobe after effects? Currently not able to get them to load - maybe not signed? Can we create detailed steps on how to get this to work for running locally with Adobe After Effects 2025?". And used that markdown file as input to help with creating a more robust system.
 - That worked, was able to finally load a CEP plugin. Btw earlier when I had to run a script I could not get sockets to work so Claude synthesized a file-based way to communicate. That seemed more reliable. So when switching over to CEP we went with that. There was a lot of copying of errors and prompting for guidance but fairly minimal human-based engineering. Mostly guidance. I used Amazon Q to power the client using just this in ~/.aws/amazonq/mcp.json:
 ```
     "ae-mcp": {
       "command": "node",
-      "args": ["<path to>/ae-mcp/dist/stdio-server-hybrid.js"],
+      "args": ["<path to>/ae-mcp/dist/stdio-server.js"],
       "env": {
         "AE_USE_FILE_BRIDGE": "true"
       }
