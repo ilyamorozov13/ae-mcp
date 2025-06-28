@@ -16,132 +16,143 @@ export const keyframeGenerators: ScriptGeneratorModule = {
         easeOut?: { speed: number; influence: number };
       };
     };
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    // Build the script with proper ES3 compatibility
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Position");
-      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Scale");
-      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Rotate Z");
-      } else if (part === "Opacity" && prop === layer) {
-        prop = prop.property("ADBE Opacity");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Position");\n';
+    script += '  } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Scale");\n';
+    script += '  } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Rotate Z");\n';
+    script += '  } else if (part === "Opacity" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Opacity");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
     // Set keyframe
-    var value = ${Array.isArray(params.value) ? `[${params.value.join(',')}]` : params.value};
-    prop.setValueAtTime(${params.time}, value);
+    script += '// Set keyframe\n';
+    if (Array.isArray(params.value)) {
+      script += 'var value = [' + params.value.join(',') + '];\n';
+    } else {
+      script += 'var value = ' + params.value + ';\n';
+    }
+    script += 'prop.setValueAtTime(' + params.time + ', value);\n\n';
     
-    // Get the keyframe index
-    var keyIndex = prop.nearestKeyIndex(${params.time});
+    script += '// Get the keyframe index\n';
+    script += 'var keyIndex = prop.nearestKeyIndex(' + params.time + ');\n\n';
     
-    ${params.interpolation ? `
-      var interpolation = ${JSON.stringify(params.interpolation)};
+    if (params.interpolation) {
+      script += 'var interpolation = ' + JSON.stringify(params.interpolation) + ';\n\n';
       
       // Set temporal interpolation
-      ${params.interpolation.temporalEase ? `
-        var easeType = "${params.interpolation.temporalEase}";
-        var easeIn, easeOut;
+      if (params.interpolation.temporalEase) {
+        script += '// Set temporal interpolation\n';
+        script += 'var easeType = "' + params.interpolation.temporalEase + '";\n';
+        script += 'var easeIn, easeOut;\n\n';
         
-        switch(easeType) {
-          case "linear":
-            easeIn = easeOut = new KeyframeEase(0, 0.1);
-            break;
-          case "easeIn":
-            easeIn = new KeyframeEase(0, 33.333);
-            easeOut = new KeyframeEase(0, 0.1);
-            break;
-          case "easeOut":
-            easeIn = new KeyframeEase(0, 0.1);
-            easeOut = new KeyframeEase(0, 33.333);
-            break;
-          case "easeInOut":
-            easeIn = easeOut = new KeyframeEase(0, 33.333);
-            break;
-          case "hold":
-            prop.setInterpolationTypeAtKey(keyIndex, KeyframeInterpolationType.HOLD);
-            break;
-          case "custom":
-            ${params.interpolation.customEase ? `
-              var customEase = interpolation.customEase;
-              if (customEase.easeIn) {
-                easeIn = new KeyframeEase(customEase.easeIn.speed, customEase.easeIn.influence);
-              }
-              if (customEase.easeOut) {
-                easeOut = new KeyframeEase(customEase.easeOut.speed, customEase.easeOut.influence);
-              }
-            ` : ''}
-            break;
+        script += 'switch(easeType) {\n';
+        script += '  case "linear":\n';
+        script += '    easeIn = easeOut = new KeyframeEase(0, 0.1);\n';
+        script += '    break;\n';
+        script += '  case "easeIn":\n';
+        script += '    easeIn = new KeyframeEase(0, 33.333);\n';
+        script += '    easeOut = new KeyframeEase(0, 0.1);\n';
+        script += '    break;\n';
+        script += '  case "easeOut":\n';
+        script += '    easeIn = new KeyframeEase(0, 0.1);\n';
+        script += '    easeOut = new KeyframeEase(0, 33.333);\n';
+        script += '    break;\n';
+        script += '  case "easeInOut":\n';
+        script += '    easeIn = easeOut = new KeyframeEase(0, 33.333);\n';
+        script += '    break;\n';
+        script += '  case "hold":\n';
+        script += '    prop.setInterpolationTypeAtKey(keyIndex, KeyframeInterpolationType.HOLD);\n';
+        script += '    break;\n';
+        script += '  case "custom":\n';
+        if (params.interpolation.customEase) {
+          script += '    var customEase = interpolation.customEase;\n';
+          script += '    if (customEase.easeIn) {\n';
+          script += '      easeIn = new KeyframeEase(customEase.easeIn.speed, customEase.easeIn.influence);\n';
+          script += '    }\n';
+          script += '    if (customEase.easeOut) {\n';
+          script += '      easeOut = new KeyframeEase(customEase.easeOut.speed, customEase.easeOut.influence);\n';
+          script += '    }\n';
         }
+        script += '    break;\n';
+        script += '}\n\n';
         
-        if (easeType !== "hold" && easeIn && easeOut) {
-          if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || 
-              prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {
-            prop.setTemporalEaseAtKey(keyIndex, [easeIn, easeIn], [easeOut, easeOut]);
-          } else if (prop.propertyValueType === PropertyValueType.ThreeD) {
-            prop.setTemporalEaseAtKey(keyIndex, [easeIn, easeIn, easeIn], [easeOut, easeOut, easeOut]);
-          } else {
-            prop.setTemporalEaseAtKey(keyIndex, [easeIn], [easeOut]);
-          }
-        }
-      ` : ''}
+        script += 'if (easeType !== "hold" && easeIn && easeOut) {\n';
+        script += '  if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
+        script += '      prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {\n';
+        script += '    prop.setTemporalEaseAtKey(keyIndex, [easeIn, easeIn], [easeOut, easeOut]);\n';
+        script += '  } else if (prop.propertyValueType === PropertyValueType.ThreeD) {\n';
+        script += '    prop.setTemporalEaseAtKey(keyIndex, [easeIn, easeIn, easeIn], [easeOut, easeOut, easeOut]);\n';
+        script += '  } else {\n';
+        script += '    prop.setTemporalEaseAtKey(keyIndex, [easeIn], [easeOut]);\n';
+        script += '  }\n';
+        script += '}\n\n';
+      }
       
       // Set spatial interpolation for position properties
-      ${params.interpolation.spatialInterpolation ? `
-        if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || 
-            prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {
-          var spatialType = "${params.interpolation.spatialInterpolation}";
-          
-          switch(spatialType) {
-            case "linear":
-              prop.setSpatialTangentsAtKey(keyIndex, [0, 0], [0, 0]);
-              break;
-            case "bezier":
-              prop.setSpatialAutoBezierAtKey(keyIndex, true);
-              break;
-            case "auto":
-              prop.setSpatialContinuousAtKey(keyIndex, true);
-              prop.setSpatialAutoBezierAtKey(keyIndex, true);
-              break;
-          }
-        }
-      ` : ''}
-    ` : ''}
-    
-    return {
-      success: true,
-      data: {
-        property: "${helpers.escapeString(params.propertyPath)}",
-        time: ${params.time},
-        value: value,
-        keyIndex: keyIndex
+      if (params.interpolation.spatialInterpolation) {
+        script += '// Set spatial interpolation for position properties\n';
+        script += 'if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
+        script += '    prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {\n';
+        script += '  var spatialType = "' + params.interpolation.spatialInterpolation + '";\n';
+        script += '  \n';
+        script += '  switch(spatialType) {\n';
+        script += '    case "linear":\n';
+        script += '      prop.setSpatialTangentsAtKey(keyIndex, [0, 0], [0, 0]);\n';
+        script += '      break;\n';
+        script += '    case "bezier":\n';
+        script += '      prop.setSpatialAutoBezierAtKey(keyIndex, true);\n';
+        script += '      break;\n';
+        script += '    case "auto":\n';
+        script += '      prop.setSpatialContinuousAtKey(keyIndex, true);\n';
+        script += '      prop.setSpatialAutoBezierAtKey(keyIndex, true);\n';
+        script += '      break;\n';
+        script += '  }\n';
+        script += '}\n\n';
       }
-    };
-  `,
+    }
+    
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    time: ' + params.time + ',\n';
+    script += '    value: value,\n';
+    script += '    keyIndex: keyIndex\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   applyEasyEase: (params: {
     compId: number;
@@ -149,104 +160,108 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     propertyPath: string;
     keyframeIndices?: number[];
     easeType?: string;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    // Build the script with proper ES3 compatibility
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Position");
-      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Scale");
-      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Rotate Z");
-      } else if (part === "Opacity" && prop === layer) {
-        prop = prop.property("ADBE Opacity");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Position");\n';
+    script += '  } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Scale");\n';
+    script += '  } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Rotate Z");\n';
+    script += '  } else if (part === "Opacity" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Opacity");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    // Check if property has keyframes
-    if (prop.numKeys === 0) {
-      throw new Error("Property has no keyframes to apply easing to");
-    }
+    script += '// Check if property has keyframes\n';
+    script += 'if (prop.numKeys === 0) {\n';
+    script += '  throw new Error("Property has no keyframes to apply easing to");\n';
+    script += '}\n\n';
     
-    var keyIndices = ${params.keyframeIndices ? JSON.stringify(params.keyframeIndices) : 'null'};
-    var easeType = "${params.easeType || 'ease'}";
+    script += 'var keyIndices = ' + (params.keyframeIndices ? JSON.stringify(params.keyframeIndices) : 'null') + ';\n';
+    script += 'var easeType = "' + (params.easeType || 'ease') + '";\n\n';
     
-    // If no specific keys, apply to all
-    if (!keyIndices) {
-      keyIndices = [];
-      for (var i = 1; i <= prop.numKeys; i++) {
-        keyIndices.push(i);
-      }
-    }
+    script += '// If no specific keys, apply to all\n';
+    script += 'if (!keyIndices) {\n';
+    script += '  keyIndices = [];\n';
+    script += '  for (var i = 1; i <= prop.numKeys; i++) {\n';
+    script += '    keyIndices.push(i);\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    // Define ease values
-    var easeIn, easeOut;
-    switch(easeType) {
-      case "easeIn":
-        easeIn = new KeyframeEase(0, 33.333);
-        easeOut = new KeyframeEase(0, 0.1);
-        break;
-      case "easeOut":
-        easeIn = new KeyframeEase(0, 0.1);
-        easeOut = new KeyframeEase(0, 33.333);
-        break;
-      case "ease":
-      default:
-        easeIn = easeOut = new KeyframeEase(0, 33.333);
-        break;
-    }
+    script += '// Define ease values\n';
+    script += 'var easeIn, easeOut;\n';
+    script += 'switch(easeType) {\n';
+    script += '  case "easeIn":\n';
+    script += '    easeIn = new KeyframeEase(0, 33.333);\n';
+    script += '    easeOut = new KeyframeEase(0, 0.1);\n';
+    script += '    break;\n';
+    script += '  case "easeOut":\n';
+    script += '    easeIn = new KeyframeEase(0, 0.1);\n';
+    script += '    easeOut = new KeyframeEase(0, 33.333);\n';
+    script += '    break;\n';
+    script += '  case "ease":\n';
+    script += '  default:\n';
+    script += '    easeIn = easeOut = new KeyframeEase(0, 33.333);\n';
+    script += '    break;\n';
+    script += '}\n\n';
     
-    var modifiedCount = 0;
+    script += 'var modifiedCount = 0;\n\n';
     
-    // Apply to each keyframe
-    for (var i = 0; i < keyIndices.length; i++) {
-      var keyIndex = keyIndices[i];
-      if (keyIndex > 0 && keyIndex <= prop.numKeys) {
-        if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || 
-            prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {
-          prop.setTemporalEaseAtKey(keyIndex, [easeIn, easeIn], [easeOut, easeOut]);
-        } else if (prop.propertyValueType === PropertyValueType.ThreeD) {
-          prop.setTemporalEaseAtKey(keyIndex, [easeIn, easeIn, easeIn], [easeOut, easeOut, easeOut]);
-        } else {
-          prop.setTemporalEaseAtKey(keyIndex, [easeIn], [easeOut]);
-        }
-        modifiedCount++;
-      }
-    }
+    script += '// Apply to each keyframe\n';
+    script += 'for (var i = 0; i < keyIndices.length; i++) {\n';
+    script += '  var keyIndex = keyIndices[i];\n';
+    script += '  if (keyIndex > 0 && keyIndex <= prop.numKeys) {\n';
+    script += '    if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
+    script += '        prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {\n';
+    script += '      prop.setTemporalEaseAtKey(keyIndex, [easeIn, easeIn], [easeOut, easeOut]);\n';
+    script += '    } else if (prop.propertyValueType === PropertyValueType.ThreeD) {\n';
+    script += '      prop.setTemporalEaseAtKey(keyIndex, [easeIn, easeIn, easeIn], [easeOut, easeOut, easeOut]);\n';
+    script += '    } else {\n';
+    script += '      prop.setTemporalEaseAtKey(keyIndex, [easeIn], [easeOut]);\n';
+    script += '    }\n';
+    script += '    modifiedCount++;\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    return {
-      success: true,
-      data: {
-        property: "${helpers.escapeString(params.propertyPath)}",
-        keyframesModified: modifiedCount,
-        totalKeyframes: prop.numKeys,
-        easeType: easeType,
-        propertyType: prop.propertyValueType
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    keyframesModified: modifiedCount,\n';
+    script += '    totalKeyframes: prop.numKeys,\n';
+    script += '    easeType: easeType,\n';
+    script += '    propertyType: prop.propertyValueType\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   setKeyframeVelocity: (params: {
     compId: number;
@@ -301,17 +316,15 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     var currentOutEase = prop.keyOutTemporalEase(keyIndex);
     
     // Update velocities
-    ${params.incomingVelocity !== undefined ? `
-      for (var i = 0; i < currentInEase.length; i++) {
-        currentInEase[i].speed = ${params.incomingVelocity};
-      }
-    ` : ''}
+    " + (params.incomingVelocity !== undefined ? 
+      "for (var i = 0; i < currentInEase.length; i++) {\n" +
+      "  currentInEase[i].speed = " + params.incomingVelocity + ";\n" +
+      "}\n" : '') + "
     
-    ${params.outgoingVelocity !== undefined ? `
-      for (var i = 0; i < currentOutEase.length; i++) {
-        currentOutEase[i].speed = ${params.outgoingVelocity};
-      }
-    ` : ''}
+    " + (params.outgoingVelocity !== undefined ? 
+      "for (var i = 0; i < currentOutEase.length; i++) {\n" +
+      "  currentOutEase[i].speed = " + params.outgoingVelocity + ";\n" +
+      "}\n" : '') + "
     
     // Apply updated ease
     prop.setTemporalEaseAtKey(keyIndex, currentInEase, currentOutEase);
@@ -321,8 +334,8 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       data: {
         property: "${helpers.escapeString(params.propertyPath)}",
         keyframeIndex: keyIndex,
-        incomingVelocity: ${params.incomingVelocity || 'currentInEase[0].speed'},
-        outgoingVelocity: ${params.outgoingVelocity || 'currentOutEase[0].speed'}
+        incomingVelocity: \" + (params.incomingVelocity || 'currentInEase[0].speed') + \",
+        outgoingVelocity: \" + (params.outgoingVelocity || 'currentOutEase[0].speed') + \"
       }
     };
   `,
@@ -378,23 +391,19 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     var inEase = [];
     var outEase = [];
     
-    ${params.easeIn ? `
-      var easeInData = ${JSON.stringify(params.easeIn)};
-      for (var i = 0; i < easeInData.length; i++) {
-        inEase.push(new KeyframeEase(easeInData[i].speed, easeInData[i].influence));
-      }
-    ` : `
-      inEase = prop.keyInTemporalEase(keyIndex);
-    `}
+    " + (params.easeIn ? 
+      "var easeInData = " + JSON.stringify(params.easeIn) + ";\n" +
+      "for (var i = 0; i < easeInData.length; i++) {\n" +
+      "  inEase.push(new KeyframeEase(easeInData[i].speed, easeInData[i].influence));\n" +
+      "}\n" : 
+      "inEase = prop.keyInTemporalEase(keyIndex);\n") + "
     
-    ${params.easeOut ? `
-      var easeOutData = ${JSON.stringify(params.easeOut)};
-      for (var i = 0; i < easeOutData.length; i++) {
-        outEase.push(new KeyframeEase(easeOutData[i].speed, easeOutData[i].influence));
-      }
-    ` : `
-      outEase = prop.keyOutTemporalEase(keyIndex);
-    `}
+    " + (params.easeOut ? 
+      "var easeOutData = " + JSON.stringify(params.easeOut) + ";\n" +
+      "for (var i = 0; i < easeOutData.length; i++) {\n" +
+      "  outEase.push(new KeyframeEase(easeOutData[i].speed, easeOutData[i].influence));\n" +
+      "}\n" : 
+      "outEase = prop.keyOutTemporalEase(keyIndex);\n") + "
     
     prop.setTemporalEaseAtKey(keyIndex, inEase, outEase);
     
@@ -434,8 +443,8 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       throw new Error("Invalid keyframe index");
     }
     
-    var inTangent = ${params.inTangent ? `[${params.inTangent.join(',')}]` : 'prop.keyInSpatialTangent(keyIndex)'};
-    var outTangent = ${params.outTangent ? `[${params.outTangent.join(',')}]` : 'prop.keyOutSpatialTangent(keyIndex)'};
+    var inTangent = \" + (params.inTangent ? '[' + params.inTangent.join(',') + ']' : 'prop.keyInSpatialTangent(keyIndex)') + \";
+    var outTangent = \" + (params.outTangent ? '[' + params.outTangent.join(',') + ']' : 'prop.keyOutSpatialTangent(keyIndex)') + \";
     
     prop.setSpatialTangentsAtKey(keyIndex, inTangent, outTangent);
     
@@ -503,23 +512,19 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       "auto": KeyframeInterpolationType.BEZIER // Auto becomes bezier
     };
     
-    ${params.inType ? `
-      var inType = typeMap["${params.inType}"];
-      if (inType === undefined) {
-        throw new Error("Invalid interpolation type: ${params.inType}");
-      }
-    ` : `
-      var inType = prop.keyInInterpolationType(keyIndex);
-    `}
+    " + (params.inType ? 
+      "var inType = typeMap[\"" + params.inType + "\"];\n" +
+      "if (inType === undefined) {\n" +
+      "  throw new Error(\"Invalid interpolation type: " + params.inType + "\");\n" +
+      "}\n" : 
+      "var inType = prop.keyInInterpolationType(keyIndex);\n") + "
     
-    ${params.outType ? `
-      var outType = typeMap["${params.outType}"];
-      if (outType === undefined) {
-        throw new Error("Invalid interpolation type: ${params.outType}");
-      }
-    ` : `
-      var outType = prop.keyOutInterpolationType(keyIndex);
-    `}
+    " + (params.outType ? 
+      "var outType = typeMap[\"" + params.outType + "\"];\n" +
+      "if (outType === undefined) {\n" +
+      "  throw new Error(\"Invalid interpolation type: " + params.outType + "\");\n" +
+      "}\n" : 
+      "var outType = prop.keyOutInterpolationType(keyIndex);\n") + "
     
     prop.setInterpolationTypeAtKey(keyIndex, inType, outType);
     
@@ -528,8 +533,8 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       data: {
         property: "${helpers.escapeString(params.propertyPath)}",
         keyframeIndex: keyIndex,
-        inType: "${params.inType || 'unchanged'}",
-        outType: "${params.outType || 'unchanged'}"
+        inType: \"" + (params.inType || 'unchanged') + "\",
+        outType: \"" + (params.outType || 'unchanged') + "\""
       }
     };
   `,
@@ -545,104 +550,109 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       easeOut?: { speed: number; influence: number };
     }>;
     clearExisting?: boolean;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    // Build the script with proper ES3 compatibility
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Position");
-      } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Scale");
-      } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {
-        prop = prop.property("ADBE Rotate Z");
-      } else if (part === "Opacity" && prop === layer) {
-        prop = prop.property("ADBE Opacity");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else if (part === "Position" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Position");\n';
+    script += '  } else if (part === "Scale" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Scale");\n';
+    script += '  } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {\n';
+    script += '    prop = prop.property("ADBE Rotate Z");\n';
+    script += '  } else if (part === "Opacity" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Opacity");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
     // Clear existing keyframes if requested
-    ${params.clearExisting !== false ? `
-      while (prop.numKeys > 0) {
-        prop.removeKey(1);
-      }
-    ` : ''}
-    
-    // Add keyframes
-    var keyframes = ${JSON.stringify(params.keyframes)};
-    
-    for (var i = 0; i < keyframes.length; i++) {
-      var kf = keyframes[i];
-      var value = kf.value;
-      
-      // Handle array values
-      if (typeof value === "object" && value.length) {
-        prop.setValueAtTime(kf.time, value);
-      } else {
-        prop.setValueAtTime(kf.time, value);
-      }
-      
-      // Get the key index
-      var keyIndex = prop.nearestKeyIndex(kf.time);
-      
-      // Apply easing if specified
-      if (kf.easeIn || kf.easeOut) {
-        var inEase, outEase;
-        
-        if (kf.easeIn) {
-          inEase = new KeyframeEase(kf.easeIn.speed, kf.easeIn.influence);
-        } else {
-          inEase = new KeyframeEase(0, 33.333);
-        }
-        
-        if (kf.easeOut) {
-          outEase = new KeyframeEase(kf.easeOut.speed, kf.easeOut.influence);
-        } else {
-          outEase = new KeyframeEase(0, 33.333);
-        }
-        
-        // Apply appropriate number of ease values based on property type
-        if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || 
-            prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {
-          prop.setTemporalEaseAtKey(keyIndex, [inEase, inEase], [outEase, outEase]);
-        } else if (prop.propertyValueType === PropertyValueType.ThreeD) {
-          prop.setTemporalEaseAtKey(keyIndex, [inEase, inEase, inEase], [outEase, outEase, outEase]);
-        } else {
-          prop.setTemporalEaseAtKey(keyIndex, [inEase], [outEase]);
-        }
-      }
+    if (params.clearExisting !== false) {
+      script += '// Clear existing keyframes\n';
+      script += 'while (prop.numKeys > 0) {\n';
+      script += '  prop.removeKey(1);\n';
+      script += '}\n\n';
     }
     
-    return {
-      success: true,
-      data: {
-        property: "${helpers.escapeString(params.propertyPath)}",
-        keyframesSet: keyframes.length,
-        firstTime: keyframes[0].time,
-        lastTime: keyframes[keyframes.length - 1].time
-      }
-    };
-  `,
+    script += '// Add keyframes\n';
+    script += 'var keyframes = ' + JSON.stringify(params.keyframes) + ';\n\n';
+    
+    script += 'for (var i = 0; i < keyframes.length; i++) {\n';
+    script += '  var kf = keyframes[i];\n';
+    script += '  var value = kf.value;\n';
+    script += '  \n';
+    script += '  // Handle array values\n';
+    script += '  if (typeof value === "object" && value.length) {\n';
+    script += '    prop.setValueAtTime(kf.time, value);\n';
+    script += '  } else {\n';
+    script += '    prop.setValueAtTime(kf.time, value);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  // Get the key index\n';
+    script += '  var keyIndex = prop.nearestKeyIndex(kf.time);\n';
+    script += '  \n';
+    script += '  // Apply easing if specified\n';
+    script += '  if (kf.easeIn || kf.easeOut) {\n';
+    script += '    var inEase, outEase;\n';
+    script += '    \n';
+    script += '    if (kf.easeIn) {\n';
+    script += '      inEase = new KeyframeEase(kf.easeIn.speed, kf.easeIn.influence);\n';
+    script += '    } else {\n';
+    script += '      inEase = new KeyframeEase(0, 33.333);\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    if (kf.easeOut) {\n';
+    script += '      outEase = new KeyframeEase(kf.easeOut.speed, kf.easeOut.influence);\n';
+    script += '    } else {\n';
+    script += '      outEase = new KeyframeEase(0, 33.333);\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    // Apply appropriate number of ease values based on property type\n';
+    script += '    if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
+    script += '        prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {\n';
+    script += '      prop.setTemporalEaseAtKey(keyIndex, [inEase, inEase], [outEase, outEase]);\n';
+    script += '    } else if (prop.propertyValueType === PropertyValueType.ThreeD) {\n';
+    script += '      prop.setTemporalEaseAtKey(keyIndex, [inEase, inEase, inEase], [outEase, outEase, outEase]);\n';
+    script += '    } else {\n';
+    script += '      prop.setTemporalEaseAtKey(keyIndex, [inEase], [outEase]);\n';
+    script += '    }\n';
+    script += '  }\n';
+    script += '}\n\n';
+    
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    keyframesSet: keyframes.length,\n';
+    script += '    firstTime: keyframes[0].time,\n';
+    script += '    lastTime: keyframes[keyframes.length - 1].time\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   copyKeyframes: (params: {
     compId: number;
@@ -699,16 +709,15 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     }
     
     // Reverse if requested
-    ${params.reverseKeyframes ? `
-      keyframeValues.reverse();
-      keyframeInEases.reverse();
-      keyframeOutEases.reverse();
-      
-      // Swap in/out eases when reversing
-      var temp = keyframeInEases;
-      keyframeInEases = keyframeOutEases;
-      keyframeOutEases = temp;
-    ` : ''}
+    " + (params.reverseKeyframes ? 
+      "keyframeValues.reverse();\n" +
+      "keyframeInEases.reverse();\n" +
+      "keyframeOutEases.reverse();\n" +
+      "\n" +
+      "// Swap in/out eases when reversing\n" +
+      "var temp = keyframeInEases;\n" +
+      "keyframeInEases = keyframeOutEases;\n" +
+      "keyframeOutEases = temp;\n" : '') + "
     
     // Apply to target
     for (var i = 0; i < keyframeTimes.length; i++) {
@@ -724,7 +733,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
         targetLayer: targetLayer.name,
         keyframesCopied: keyframeTimes.length,
         timeOffset: timeOffset,
-        reversed: ${params.reverseKeyframes ? 'true' : 'false'}
+        reversed: " + (params.reverseKeyframes ? 'true' : 'false') + "
       }
     };
   `,
@@ -772,7 +781,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     }
     
     var offset = ${params.offset};
-    var keyIndices = ${params.keyframeIndices ? JSON.stringify(params.keyframeIndices) : 'null'};
+    var keyIndices = \" + (params.keyframeIndices ? JSON.stringify(params.keyframeIndices) : 'null') + \";
     
     // Store keyframe data
     var keyframeData = [];
@@ -1013,7 +1022,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     var preset = "${params.preset}";
     var startTime = ${params.startTime || 'comp.time'};
     var duration = ${params.duration || 1};
-    var properties = ${params.properties ? JSON.stringify(params.properties) : '["position", "scale", "rotation", "opacity"]'};
+    var properties = \" + (params.properties ? JSON.stringify(params.properties) : '["position", "scale", "rotation", "opacity"]') + \";
     
     // Apply preset animations
     switch(preset) {
