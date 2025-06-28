@@ -1,4 +1,12 @@
 export class ScriptGenerator {
+  constructor() {
+    // Set up aliases after object is created
+    this.generators.create_project = this.generators.createProject;
+    this.generators.open_project = this.generators.openProject;
+    this.generators.save_project = this.generators.saveProject;
+    this.generators.get_project_info = this.generators.getProjectInfo;
+  }
+
   generate(command: string, params: any): string {
     const generator = this.generators[command];
     if (!generator) {
@@ -37,15 +45,32 @@ export class ScriptGenerator {
   }
   
   private generators: { [key: string]: (params: any) => string } = {
-    // System/diagnostic commands are defined later in this object
-    ping: function(params: any) { return this.pingCommand.call(this, params); },
-    get_ae_version: function(params: any) { return this.getAEVersion.call(this, params); },
+    // System/diagnostic commands
+    ping: () => `
+      return {
+        success: true,
+        data: {
+          message: "pong",
+          timestamp: new Date().toISOString()
+        }
+      };
+    `,
     
-    // Map underscore names to camelCase implementations
-    create_project: function(params: any) { return this.createProject.call(this, params); },
-    open_project: function(params: any) { return this.openProject.call(this, params); },
-    save_project: function(params: any) { return this.saveProject.call(this, params); },
-    get_project_info: function(params: any) { return this.getProjectInfo.call(this, params); },
+    get_ae_version: () => `
+      return {
+        success: true,
+        data: {
+          version: app.version,
+          buildNumber: app.buildNumber,
+          buildName: app.buildName,
+          language: app.language,
+          locale: app.locale,
+          memoryInUse: app.memoryInUse,
+          projectName: app.project ? app.project.name : null
+        }
+      };
+    `,
+    
     create_composition: function(params: any) { return this.createComposition.call(this, params); },
     modify_composition: function(params: any) { return this.modifyComposition.call(this, params); },
     list_compositions: function(params: any) { return this.listCompositions.call(this, params); },
@@ -1214,21 +1239,6 @@ export class ScriptGenerator {
       return {
         success: true,
         data: { message: "Composition '" + compName + "' deleted" }
-      };
-    `,
-    
-    getAEVersion: () => `
-      return {
-        success: true,
-        data: {
-          version: app.version,
-          buildNumber: app.buildNumber,
-          buildName: app.buildName,
-          language: app.language,
-          locale: app.locale,
-          memoryInUse: app.memoryInUse,
-          projectName: app.project ? app.project.name : null
-        }
       };
     `
   };
