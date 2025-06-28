@@ -150,12 +150,17 @@ export class AEFileCommunicator {
             }
             
             // Resolve promise
-            if (response.result.success) {
+            if (!response.result || typeof response.result !== 'object') {
+              pending.reject(new AEError('Invalid response format: missing result property', 'INVALID_RESPONSE'));
+            } else if (response.result.success) {
               // Mark that we've successfully completed at least one command
               this.isFirstCommand = false;
               pending.resolve(response.result.data);
             } else {
-              pending.reject(new AEError(response.result.error.message, response.result.error.code));
+              // Handle error response
+              const errorMessage = response.result.error?.message || 'Unknown error';
+              const errorCode = response.result.error?.code || 'UNKNOWN_ERROR';
+              pending.reject(new AEError(errorMessage, errorCode));
             }
           } else {
             // Clean up orphaned response

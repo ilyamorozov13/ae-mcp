@@ -136,6 +136,10 @@ class StdioMCPServer {
             return null;
           }
           return { jsonrpc: '2.0', result: {}, id };
+        case 'notifications/cancelled':
+          logger.debug('Received cancellation notification');
+          // This is a notification, no response needed
+          return null;
         case 'tools/list':
           result = await this.handleListTools();
           break;
