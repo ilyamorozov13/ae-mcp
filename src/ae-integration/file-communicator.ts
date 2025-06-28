@@ -20,6 +20,7 @@ export class AEFileCommunicator {
   private commandsDir: string;
   private checkInterval: NodeJS.Timeout | null = null;
   private isConnected = false;
+  private isFirstCommand = true;
   
   constructor(logger: Logger) {
     this.logger = logger;
@@ -58,6 +59,9 @@ export class AEFileCommunicator {
     // Start checking for responses
     this.startResponseChecker();
     this.isConnected = true;
+    
+    // Add a small delay to allow CEP extension to initialize
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
   
   private startResponseChecker() {
