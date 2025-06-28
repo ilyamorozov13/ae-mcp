@@ -49,7 +49,11 @@ export class ScriptGenerator {
     add_shape_layer: (params: any) => this.generators.addShapeLayer(params),
     create_layer: (params: any) => this.generators.createLayer(params),
     modify_layer_properties: (params: any) => this.generators.modifyLayerProperties(params),
+    duplicate_layer: (params: any) => this.generators.duplicateLayer(params),
+    delete_layer: (params: any) => this.generators.deleteLayer(params),
+    reorder_layers: (params: any) => this.generators.reorderLayers(params),
     set_keyframe: (params: any) => this.generators.setKeyframe(params),
+    apply_effect: (params: any) => this.generators.applyEffect(params),
     add_to_render_queue: (params: any) => this.generators.addToRenderQueue(params),
     start_render: (params: any) => this.generators.startRender(params),
     get_render_queue: (params: any) => this.generators.getRenderQueue(params),
@@ -431,16 +435,43 @@ export class ScriptGenerator {
         throw new Error("Layer not found");
       }
       
-      ${params.properties.position ? `layer.property("Position").setValue([${params.properties.position.join(',')}]);` : ''}
-      ${params.properties.scale ? `layer.property("Scale").setValue([${params.properties.scale.join(',')}]);` : ''}
-      ${params.properties.rotation ? `layer.property("Rotation").setValue(${params.properties.rotation});` : ''}
-      ${params.properties.opacity ? `layer.property("Opacity").setValue(${params.properties.opacity});` : ''}
+      // Helper function to set property value, handling keyframes
+      function setPropertyValue(prop, value) {
+        if (prop.numKeys > 0) {
+          // Property has keyframes, use setValueAtTime at current comp time
+          prop.setValueAtTime(comp.time, value);
+        } else {
+          // No keyframes, use setValue
+          prop.setValue(value);
+        }
+      }
+      
+      ${params.properties.position ? `
+      var positionProp = layer.property("Position");
+      setPropertyValue(positionProp, [${params.properties.position.join(',')}]);
+      ` : ''}
+      
+      ${params.properties.scale ? `
+      var scaleProp = layer.property("Scale");
+      setPropertyValue(scaleProp, [${params.properties.scale.join(',')}]);
+      ` : ''}
+      
+      ${params.properties.rotation ? `
+      var rotationProp = layer.property("Rotation");
+      setPropertyValue(rotationProp, ${params.properties.rotation});
+      ` : ''}
+      
+      ${params.properties.opacity ? `
+      var opacityProp = layer.property("Opacity");
+      setPropertyValue(opacityProp, ${params.properties.opacity});
+      ` : ''}
       
       return {
         success: true,
         data: {
           index: layer.index,
-          name: layer.name
+          name: layer.name,
+          modifiedAt: comp.time
         }
       };
     `,
@@ -566,6 +597,143 @@ export class ScriptGenerator {
       };
     `;
     },
+    
+    duplicateLayer: (params: {
+      compId: number;
+      layerIndex: number;
+    }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var layer = comp.layer(${params.layerIndex});
+      if (!layer) {
+        throw new Error("Layer not found");
+      }
+      
+      var duplicated = layer.duplicate();
+      
+      return {
+        success: true,
+        data: {
+          originalIndex: layer.index,
+          duplicatedIndex: duplicated.index,
+          name: duplicated.name
+        }
+      };
+    `,
+    
+    deleteLayer: (params: {
+      compId: number;
+      layerIndex: number;
+    }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var layer = comp.layer(${params.layerIndex});
+      if (!layer) {
+        throw new Error("Layer not found");
+      }
+      
+      var layerName = layer.name;
+      layer.remove();
+      
+      return {
+        success: true,
+        data: {
+          deletedLayerName: layerName,
+          deletedLayerIndex: ${params.layerIndex}
+        }
+      };
+    `,
+    
+    reorderLayers: (params: {
+      compId: number;
+      layerIndex: number;
+      newIndex: number;
+    }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var layer = comp.layer(${params.layerIndex});
+      if (!layer) {
+        throw new Error("Layer not found");
+      }
+      
+      // After Effects uses moveBefore/moveAfter methods
+      // If newIndex is less than current, we need to move before
+      // If newIndex is greater, we need to move after
+      var currentIndex = layer.index;
+      var targetIndex = ${params.newIndex};
+      
+      if (targetIndex < 1 || targetIndex > comp.numLayers) {
+        throw new Error("New index out of range");
+      }
+      
+      if (targetIndex !== currentIndex) {
+        if (targetIndex < currentIndex) {
+          // Moving up (smaller index number)
+          var targetLayer = comp.layer(targetIndex);
+          layer.moveBefore(targetLayer);
+        } else {
+          // Moving down (larger index number)
+          // When moving down, we need to account for the shift
+          var adjustedTarget = targetIndex;
+          if (targetIndex === comp.numLayers) {
+            layer.moveToEnd();
+          } else {
+            var targetLayer = comp.layer(adjustedTarget + 1);
+            layer.moveAfter(targetLayer);
+          }
+        }
+      }
+      
+      return {
+        success: true,
+        data: {
+          layerName: layer.name,
+          oldIndex: currentIndex,
+          newIndex: layer.index
+        }
+      };
+    `,
+    
+    applyEffect: (params: {
+      compId: number;
+      layerIndex: number;
+      effectName: string;
+    }) => `
+      var comp = app.project.itemByID(${params.compId});
+      if (!comp || !(comp instanceof CompItem)) {
+        throw new Error("Composition not found");
+      }
+      
+      var layer = comp.layer(${params.layerIndex});
+      if (!layer) {
+        throw new Error("Layer not found");
+      }
+      
+      // Apply the effect
+      var effect = layer.property("Effects").addProperty("${this.escapeString(params.effectName)}");
+      
+      if (!effect) {
+        throw new Error("Failed to apply effect: " + "${this.escapeString(params.effectName)}");
+      }
+      
+      return {
+        success: true,
+        data: {
+          layerName: layer.name,
+          effectName: effect.name,
+          effectIndex: effect.propertyIndex
+        }
+      };
+    `,
     
     addToRenderQueue: (params: {
       compId: number;
