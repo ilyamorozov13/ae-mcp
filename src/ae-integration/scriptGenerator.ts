@@ -48,21 +48,19 @@ export class ScriptGenerator {
   }
   
   private wrapInTryCatch(script: string): string {
-    return `
-      (function() {
-        try {
-          ${script}
-        } catch (error) {
-          return { 
-            success: false, 
-            error: { 
-              message: error.toString(), 
-              code: error.number ? error.number : 'UNKNOWN' 
-            } 
-          };
-        }
-      })();
-    `;
+    return `(function() {
+  try {
+${script.split('\n').map(line => '    ' + line).join('\n')}
+  } catch (error) {
+    return { 
+      success: false, 
+      error: { 
+        message: error.toString(), 
+        code: error.number ? error.number : 'UNKNOWN' 
+      } 
+    };
+  }
+})();`; // Note: No extra whitespace, IIFE is executed and returns value
   }
   
   private escapeString(str: string): string {
