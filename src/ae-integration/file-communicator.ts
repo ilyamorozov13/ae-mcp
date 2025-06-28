@@ -144,6 +144,8 @@ export class AEFileCommunicator {
             
             // Resolve promise
             if (response.result.success) {
+              // Mark that we've successfully completed at least one command
+              this.isFirstCommand = false;
               pending.resolve(response.result.data);
             } else {
               pending.reject(new AEError(response.result.error.message, response.result.error.code));
