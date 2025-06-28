@@ -400,6 +400,8 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
       compId: number;
       name?: string;
       shapeType?: string;
+      color?: number[];
+      size?: number[];
     }) => `
       var comp = app.project.itemByID(${params.compId});
       if (!comp || !(comp instanceof CompItem)) {
@@ -409,39 +411,41 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
       var layer = comp.layers.addShape();
       ${params.name ? `layer.name = "${this.escapeString(params.name)}";` : ''}
       
-      // Add shape content to make it visible
-      var shapeGroup = layer.property("Contents").addProperty("ADBE Vector Group");
+      // Add shape content directly to the root vectors group
+      var contents = layer.property("ADBE Root Vectors Group");
       var shapeType = "${params.shapeType ? params.shapeType : 'rectangle'}";
       
       // Add the shape path based on type
       var shapePath;
       if (shapeType === "rectangle") {
-        shapePath = shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Rect");
-        shapePath.property("Size").setValue([200, 200]);
+        shapePath = contents.addProperty("ADBE Vector Shape - Rect");
+        // Set size if provided
+        ${params.size ? `shapePath.property("ADBE Vector Rect Size").setValue([${params.size.join(',')}]);` : 
+                       `shapePath.property("ADBE Vector Rect Size").setValue([100, 100]);`}
       } else if (shapeType === "ellipse") {
-        shapePath = shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Ellipse");
-        shapePath.property("Size").setValue([200, 200]);
-      } else if (shapeType === "polygon") {
-        shapePath = shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Star");
-        shapePath.property("Type").setValue(1); // 1 = polygon, 2 = star
-        shapePath.property("Points").setValue(6);
-        shapePath.property("Outer Radius").setValue(100);
-      } else if (shapeType === "star") {
-        shapePath = shapeGroup.property("Contents").addProperty("ADBE Vector Shape - Star");
-        shapePath.property("Type").setValue(2); // 2 = star
-        shapePath.property("Points").setValue(5);
-        shapePath.property("Outer Radius").setValue(100);
-        shapePath.property("Inner Radius").setValue(50);
+        shapePath = contents.addProperty("ADBE Vector Shape - Ellipse");
+        // Set size if provided
+        ${params.size ? `shapePath.property("ADBE Vector Ellipse Size").setValue([${params.size.join(',')}]);` : 
+                       `shapePath.property("ADBE Vector Ellipse Size").setValue([100, 100]);`}
+      } else if (shapeType === "polygon" || shapeType === "star") {
+        shapePath = contents.addProperty("ADBE Vector Shape - Star");
+        // Set type after creation
+        if (shapeType === "polygon") {
+          shapePath.property("ADBE Vector Star Type").setValue(1); // 1 = polygon
+        } else {
+          shapePath.property("ADBE Vector Star Type").setValue(2); // 2 = star
+        }
+        shapePath.property("ADBE Vector Star Points").setValue(5);
+        shapePath.property("ADBE Vector Star Inner Radius").setValue(50);
+        shapePath.property("ADBE Vector Star Outer Radius").setValue(100);
       }
       
       // Add fill to make the shape visible
-      var fill = shapeGroup.property("Contents").addProperty("ADBE Vector Graphic - Fill");
-      fill.property("Color").setValue([1, 1, 1]); // White fill
+      var fill = contents.addProperty("ADBE Vector Graphic - Fill");
+      ${params.color ? `fill.property("ADBE Vector Fill Color").setValue([${params.color.join(',')}]);` : ''}
       
-      // Add stroke for better visibility
-      var stroke = shapeGroup.property("Contents").addProperty("ADBE Vector Graphic - Stroke");
-      stroke.property("Color").setValue([0, 0, 0]); // Black stroke
-      stroke.property("Stroke Width").setValue(2);
+      // Set the layer position to center of comp
+      layer.property("Position").setValue([comp.width/2, comp.height/2]);
       
       return {
         success: true,
@@ -835,8 +839,13 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
       outputModule.file = file;
       
       ${params.outputModule ? `
-        var template = "${this.escapeString(params.outputModule)}";
-        outputModule.applyTemplate(template);
+        try {
+          var template = "${this.escapeString(params.outputModule)}";
+          outputModule.applyTemplate(template);
+        } catch (templateError) {
+          // Template doesn't exist, provide helpful error message
+          throw new Error("Invalid output module template: '" + template + "'. Common templates include: 'Lossless', 'High Quality', 'HDTV 1080 29.97', 'H.264 - Match Render Settings', etc. Check Edit > Templates > Output Module for available templates in your AE installation.");
+        }
       ` : ''}
       
       return {
@@ -1000,6 +1009,47 @@ ${script.split('\n').map(line => '    ' + line).join('\n')}
             case "shape":
               layer = comp.layers.addShape();
               layer.name = layerDef.name;
+              
+              // Add default shape content if not empty
+              var contents = layer.property("ADBE Root Vectors Group");
+              
+              // Determine shape type from properties or use default
+              var shapeType = "rectangle"; // default
+              if (layerDef.properties && layerDef.properties.shapeType) {
+                shapeType = layerDef.properties.shapeType;
+              }
+              
+              // Add the shape path based on type
+              var shapePath;
+              if (shapeType === "rectangle") {
+                shapePath = contents.addProperty("ADBE Vector Shape - Rect");
+                // Set default size
+                shapePath.property("ADBE Vector Rect Size").setValue([100, 100]);
+              } else if (shapeType === "ellipse") {
+                shapePath = contents.addProperty("ADBE Vector Shape - Ellipse");
+                // Set default size
+                shapePath.property("ADBE Vector Ellipse Size").setValue([100, 100]);
+              } else if (shapeType === "polygon" || shapeType === "star") {
+                shapePath = contents.addProperty("ADBE Vector Shape - Star");
+                if (shapeType === "polygon") {
+                  shapePath.property("ADBE Vector Star Type").setValue(1); // polygon
+                } else {
+                  shapePath.property("ADBE Vector Star Type").setValue(2); // star
+                }
+                shapePath.property("ADBE Vector Star Points").setValue(5);
+                shapePath.property("ADBE Vector Star Inner Radius").setValue(50);
+                shapePath.property("ADBE Vector Star Outer Radius").setValue(100);
+              }
+              
+              // Add fill to make the shape visible
+              var fill = contents.addProperty("ADBE Vector Graphic - Fill");
+              // Use color from properties if provided
+              if (layerDef.properties && layerDef.properties.color) {
+                fill.property("ADBE Vector Fill Color").setValue(layerDef.properties.color);
+              }
+              
+              // Center the layer in the comp
+              layer.property("Position").setValue([comp.width/2, comp.height/2]);
               break;
               
             case "null":
