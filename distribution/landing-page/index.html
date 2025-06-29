@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AE-MCP Pro - AI-Powered After Effects Automation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            background: #000;
+            color: white;
+            padding: 1rem 0;
+        }
+        
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 0;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .hero p {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: #ff6b6b;
+            color: white;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: transform 0.3s;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .features {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+        
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+        
+        .feature {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .feature h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+        
+        .pricing {
+            padding: 80px 0;
+        }
+        
+        .pricing h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .price-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .price-card.featured {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+        
+        .price-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        
+        .price-features {
+            list-style: none;
+            margin: 30px 0;
+        }
+        
+        .price-features li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .demo {
+            background: #f8f9fa;
+            padding: 80px 0;
+            text-align: center;
+        }
+        
+        .demo h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .video-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .faq {
+            padding: 80px 0;
+        }
+        
+        .faq h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .faq-item {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .faq-item h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+        
+        footer {
+            background: #000;
+            color: white;
+            text-align: center;
+            padding: 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>AE-MCP Pro</h1>
+        </div>
+    </header>
+    
+    <section class="hero">
+        <div class="container">
+            <h1>Automate After Effects with AI</h1>
+            <p>Control After Effects using Claude, ChatGPT, or any AI assistant</p>
+            <a href="#pricing" class="cta-button">Get Started - 30% Launch Discount</a>
+        </div>
+    </section>
+    
+    <section class="features">
+        <div class="container">
+            <h2>Why AE-MCP Pro?</h2>
+            <div class="feature-grid">
+                <div class="feature">
+                    <h3>🤖 AI-Powered Automation</h3>
+                    <p>Use natural language to create compositions, add layers, set keyframes, and apply effects. No more clicking through menus!</p>
+                </div>
+                <div class="feature">
+                    <h3>⚡ 10x Faster Workflow</h3>
+                    <p>Batch operations, expression generation, and complex animations in seconds instead of hours.</p>
+                </div>
+                <div class="feature">
+                    <h3>🔧 Works with Any AI</h3>
+                    <p>Compatible with Claude Desktop, ChatGPT, Cline, and any MCP-compatible AI assistant.</p>
+                </div>
+                <div class="feature">
+                    <h3>📚 100+ Commands</h3>
+                    <p>Full control over compositions, layers, effects, expressions, masks, text, and rendering.</p>
+                </div>
+                <div class="feature">
+                    <h3>🎯 Smart Batching</h3>
+                    <p>Execute multiple commands in parallel for lightning-fast automation.</p>
+                </div>
+                <div class="feature">
+                    <h3>💼 Production Ready</h3>
+                    <p>Used by motion designers, VFX artists, and studios to accelerate their workflows.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="demo">
+        <div class="container">
+            <h2>See It In Action</h2>
+            <div class="video-container">
+                <iframe width="100%" height="450" src="https://www.youtube.com/embed/DEMO_VIDEO_ID" frameborder="0" allowfullscreen></iframe>
+            </div>
+        </div>
+    </section>
+    
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <h2>Choose Your Plan</h2>
+            <div class="pricing-grid">
+                <div class="price-card">
+                    <h3>Basic</h3>
+                    <div class="price">$79</div>
+                    <p>Perfect for freelancers</p>
+                    <ul class="price-features">
+                        <li>✓ Full AE automation</li>
+                        <li>✓ All 100+ commands</li>
+                        <li>✓ Email support</li>
+                        <li>✓ Basic examples</li>
+                        <li>✓ 1 year of updates</li>
+                    </ul>
+                    <a href="https://gumroad.com/l/ae-mcp-basic" class="cta-button">Buy Basic</a>
+                </div>
+                <div class="price-card featured">
+                    <h3>Pro</h3>
+                    <div class="price">$149</div>
+                    <p>Most popular choice</p>
+                    <ul class="price-features">
+                        <li>✓ Everything in Basic</li>
+                        <li>✓ Priority support</li>
+                        <li>✓ Video tutorials</li>
+                        <li>✓ Expression library</li>
+                        <li>✓ Advanced workflows</li>
+                        <li>✓ Discord community</li>
+                    </ul>
+                    <a href="https://gumroad.com/l/ae-mcp-pro" class="cta-button">Buy Pro</a>
+                </div>
+                <div class="price-card">
+                    <h3>Team</h3>
+                    <div class="price">$399</div>
+                    <p>For studios & teams</p>
+                    <ul class="price-features">
+                        <li>✓ 5 seat license</li>
+                        <li>✓ Everything in Pro</li>
+                        <li>✓ Private Discord channel</li>
+                        <li>✓ Custom onboarding</li>
+                        <li>✓ Invoice payment</li>
+                    </ul>
+                    <a href="https://gumroad.com/l/ae-mcp-team" class="cta-button">Buy Team</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="faq">
+        <div class="container">
+            <h2>Frequently Asked Questions</h2>
+            <div class="faq-item">
+                <h3>What versions of After Effects are supported?</h3>
+                <p>AE-MCP Pro works with After Effects CC 2019 and later, including the latest 2024 version.</p>
+            </div>
+            <div class="faq-item">
+                <h3>Do I need coding experience?</h3>
+                <p>No! Just describe what you want in plain English. The AI handles all the technical details.</p>
+            </div>
+            <div class="faq-item">
+                <h3>Is this a subscription?</h3>
+                <p>No, it's a one-time purchase. You get 1 year of free updates, and the software is yours forever.</p>
+            </div>
+            <div class="faq-item">
+                <h3>Can I use this commercially?</h3>
+                <p>Yes! All licenses include commercial usage rights for your projects.</p>
+            </div>
+            <div class="faq-item">
+                <h3>What's your refund policy?</h3>
+                <p>30-day money-back guarantee. If you're not satisfied, we'll refund your purchase.</p>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 AE-MCP Pro. All rights reserved.</p>
+            <p>Contact: support@aemcppro.com</p>
+        </div>
+    </footer>
+</body>
+</html>

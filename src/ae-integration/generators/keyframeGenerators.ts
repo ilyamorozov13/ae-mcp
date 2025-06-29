@@ -251,7 +251,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     
     script += '// Check if property has keyframes\n';
     script += 'if (prop.numKeys === 0) {\n';
-    script += '  throw new Error("Property \\"" + propertyPath + "\\" has no keyframes. " + layerInfo);\n';
+    script += '  throw new Error("Property \\\\"" + propertyPath + "\\\\" has no keyframes. " + layerInfo);\n';
     script += '}\n\n';
     
     script += 'var keyIndices = ' + (params.keyframeIndices ? JSON.stringify(params.keyframeIndices) : 'null') + ';\n';

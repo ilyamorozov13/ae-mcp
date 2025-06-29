@@ -6,33 +6,36 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     compId: number;
     layerIndex: number;
     effectName: string;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Apply the effect
-    var effect = layer.property("Effects").addProperty("${helpers.escapeString(params.effectName)}");
+    script += '// Apply the effect\n';
+    script += 'var effect = layer.property("Effects").addProperty("' + helpers.escapeString(params.effectName) + '");\n\n';
     
-    if (!effect) {
-      throw new Error("Failed to apply effect: " + "${params.effectName}");
-    }
+    script += 'if (!effect) {\n';
+    script += '  throw new Error("Failed to apply effect: ' + helpers.escapeString(params.effectName) + '");\n';
+    script += '}\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        effectName: effect.name,
-        effectIndex: effect.propertyIndex
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    effectName: effect.name,\n';
+    script += '    effectIndex: effect.propertyIndex\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
   
   setKeyframe: (params: {
     compId: number;
@@ -41,185 +44,196 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     time: number;
     value: any;
   }) => {
-    // Build the time assignment based on whether time is provided
-    const timeAssignment = params.time !== undefined && params.time !== null 
-      ? `var time = ${params.time};`
-      : `var time = comp.time;`;
+    let script = '';
     
-    return `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
+    
+    script += '// Get time value - use provided time or current comp time\n';
+    if (params.time !== undefined && params.time !== null) {
+      script += 'var time = ' + params.time + ';\n\n';
+    } else {
+      script += 'var time = comp.time;\n\n';
     }
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += '// Normalize property name - AE uses specific casing\n';
+    script += 'var propertyName = "' + helpers.escapeString(params.property) + '";\n';
+    script += 'var propertyMap = {\n';
+    script += '  "position": "Position",\n';
+    script += '  "scale": "Scale",\n';
+    script += '  "rotation": "Rotation",\n';
+    script += '  "opacity": "Opacity"\n';
+    script += '};\n\n';
     
-    // Get time value - use provided time or current comp time
-    ${timeAssignment}
+    script += '// Use mapped name if available, otherwise use as-is\n';
+    script += 'var normalizedProperty = propertyMap[propertyName.toLowerCase()] ? propertyMap[propertyName.toLowerCase()] : propertyName;\n\n';
     
-    // Normalize property name - AE uses specific casing
-    var propertyName = "${helpers.escapeString(params.property)}";
-    var propertyMap = {
-      "position": "Position",
-      "scale": "Scale", 
-      "rotation": "Rotation",
-      "opacity": "Opacity"
-    };
+    script += 'var prop = layer.property(normalizedProperty);\n';
+    script += 'if (!prop) {\n';
+    script += '  // Try Transform group for transform properties\n';
+    script += '  if (["Position", "Scale", "Rotation"].indexOf(normalizedProperty) !== -1) {\n';
+    script += '    var transform = layer.property("Transform");\n';
+    script += '    if (transform) {\n';
+    script += '      prop = transform.property(normalizedProperty);\n';
+    script += '    }\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + normalizedProperty + " (original: " + propertyName + ")");\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    // Use mapped name if available, otherwise use as-is
-    var normalizedProperty = propertyMap[propertyName.toLowerCase()] ? propertyMap[propertyName.toLowerCase()] : propertyName;
+    script += '// Check if property can have keyframes\n';
+    script += 'if (!prop.canVaryOverTime) {\n';
+    script += '  throw new Error("Property cannot be keyframed: ' + helpers.escapeString(params.property) + '");\n';
+    script += '}\n\n';
     
-    var prop = layer.property(normalizedProperty);
-    if (!prop) {
-      // Try Transform group for transform properties
-      if (["Position", "Scale", "Rotation"].indexOf(normalizedProperty) !== -1) {
-        var transform = layer.property("Transform");
-        if (transform) {
-          prop = transform.property(normalizedProperty);
-        }
+    script += '// Get value\n';
+    if (params.value !== undefined && params.value !== null) {
+      if (Array.isArray(params.value)) {
+        script += 'var value = [' + params.value.join(',') + '];\n\n';
+      } else {
+        script += 'var value = ' + params.value + ';\n\n';
       }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + normalizedProperty + " (original: " + propertyName + ")");
-      }
+    } else {
+      script += 'var value = prop.value;\n\n';
     }
     
-    // Check if property can have keyframes
-    if (!prop.canVaryOverTime) {
-      throw new Error("Property cannot be keyframed: ${helpers.escapeString(params.property)}");
-    }
+    script += '// Final validation before calling setValueAtTime\n';
+    script += 'if (time === undefined || time === null) {\n';
+    script += '  throw new Error("Time is still undefined after all checks!");\n';
+    script += '}\n\n';
     
-    // Get value
-    var value = ${params.value !== undefined && params.value !== null 
-      ? (Array.isArray(params.value) ? `[${params.value.join(',')}]` : params.value) 
-      : 'prop.value'};
+    script += 'if (value === undefined || value === null) {\n';
+    script += '  throw new Error("Value is undefined!");\n';
+    script += '}\n\n';
     
-    // Final validation before calling setValueAtTime
-    if (time === undefined || time === null) {
-      throw new Error("Time is still undefined after all checks!");
-    }
+    script += '// Validate array values for Position, Scale\n';
+    script += 'var arrayProps = ["Position", "Scale"];\n';
+    script += 'if (arrayProps.indexOf(normalizedProperty) !== -1) {\n';
+    script += '  if (!(value instanceof Array)) {\n';
+    script += '    throw new Error(normalizedProperty + " requires an array value, got: " + typeof value);\n';
+    script += '  }\n';
+    script += '  if (value.length < 2 || value.length > 3) {\n';
+    script += '    throw new Error(normalizedProperty + " requires 2 or 3 values, got " + value.length + ": [" + value.join(", ") + "]");\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  // Prevent zero scale values\n';
+    script += '  if (normalizedProperty === "Scale") {\n';
+    script += '    for (var i = 0; i < value.length; i++) {\n';
+    script += '      if (value[i] === 0) {\n';
+    script += '        // Replace zero with small value to avoid divide by zero\n';
+    script += '        value[i] = 0.1; // Use 0.1% instead of 0%\n';
+    script += '      }\n';
+    script += '    }\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    if (value === undefined || value === null) {
-      throw new Error("Value is undefined!");
-    }
+    script += 'try {\n';
+    script += '  // Ensure time is a number\n';
+    script += '  var numTime = parseFloat(time);\n';
+    script += '  if (isNaN(numTime)) {\n';
+    script += '    throw new Error("Time is not a valid number: " + time);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  prop.setValueAtTime(numTime, value);\n';
+    script += '} catch (e) {\n';
+    script += '  throw new Error("Failed to set keyframe at time " + time + " with value " + value + ": " + e.toString());\n';
+    script += '}\n\n';
     
-    // Validate array values for Position, Scale
-    var arrayProps = ["Position", "Scale"];
-    if (arrayProps.indexOf(normalizedProperty) !== -1) {
-      if (!(value instanceof Array)) {
-        throw new Error(normalizedProperty + " requires an array value, got: " + typeof value);
-      }
-      if (value.length < 2 || value.length > 3) {
-        throw new Error(normalizedProperty + " requires 2 or 3 values, got " + value.length + ": [" + value.join(", ") + "]");
-      }
-      
-      // Prevent zero scale values
-      if (normalizedProperty === "Scale") {
-        for (var i = 0; i < value.length; i++) {
-          if (value[i] === 0) {
-            // Replace zero with small value to avoid divide by zero
-            value[i] = 0.1; // Use 0.1% instead of 0%
-          }
-        }
-      }
-    }
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    property: "' + helpers.escapeString(params.property) + '",\n';
+    script += '    time: time,\n';
+    script += '    value: value,\n';
+    script += '    numKeys: prop.numKeys\n';
+    script += '  }\n';
+    script += '};';
     
-    try {
-      // Ensure time is a number
-      var numTime = parseFloat(time);
-      if (isNaN(numTime)) {
-        throw new Error("Time is not a valid number: " + time);
-      }
-      
-      prop.setValueAtTime(numTime, value);
-    } catch (e) {
-      throw new Error("Failed to set keyframe at time " + time + " with value " + value + ": " + e.toString());
-    }
-    
-    return {
-      success: true,
-      data: {
-        property: "${helpers.escapeString(params.property)}",
-        time: time,
-        value: value,
-        numKeys: prop.numKeys
-      }
-    };
-  `;
+    return script;
   },
   
-  batchKeyframes: (params: { compId: number, keyframes: any[] }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  batchKeyframes: (params: { compId: number, keyframes: any[] }) => {
+    let script = '';
     
-    var results = [];
-    var keyframes = ${JSON.stringify(params.keyframes)};
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    for (var i = 0; i < keyframes.length; i++) {
-      var kf = keyframes[i];
-      try {
-        var layer = comp.layer(kf.layerIndex);
-        if (!layer) {
-          results.push({success: false, error: "Layer " + kf.layerIndex + " not found"});
-          continue;
-        }
-        
-        // Property name normalization
-        var propertyMap = {
-          "position": "Position",
-          "scale": "Scale",
-          "rotation": "Rotation",
-          "opacity": "Opacity"
-        };
-        var propName = propertyMap[kf.property.toLowerCase()] ? propertyMap[kf.property.toLowerCase()] : kf.property;
-        
-        var prop = layer.property(propName);
-        if (!prop) {
-          // Try under Transform
-          var transform = layer.property("Transform");
-          if (transform) {
-            prop = transform.property(propName);
-          }
-        }
-        
-        if (!prop) {
-          results.push({success: false, error: "Property " + propName + " not found on layer " + kf.layerIndex});
-          continue;
-        }
-        
-        // Fix zero scale values
-        var value = kf.value;
-        if (propName === "Scale" && value instanceof Array) {
-          for (var j = 0; j < value.length; j++) {
-            if (value[j] === 0) value[j] = 0.1;
-          }
-        }
-        
-        prop.setValueAtTime(kf.time, value);
-        results.push({success: true, layer: kf.layerIndex, property: propName, time: kf.time});
-        
-      } catch (e) {
-        results.push({success: false, error: e.toString(), layer: kf.layerIndex});
-      }
-    }
+    script += 'var results = [];\n';
+    script += 'var keyframes = ' + JSON.stringify(params.keyframes) + ';\n\n';
     
-    var successCount = 0;
-    for (var i = 0; i < results.length; i++) {
-      if (results[i].success) successCount++;
-    }
+    script += 'for (var i = 0; i < keyframes.length; i++) {\n';
+    script += '  var kf = keyframes[i];\n';
+    script += '  try {\n';
+    script += '    var layer = comp.layer(kf.layerIndex);\n';
+    script += '    if (!layer) {\n';
+    script += '      results.push({success: false, error: "Layer " + kf.layerIndex + " not found"});\n';
+    script += '      continue;\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    // Property name normalization\n';
+    script += '    var propertyMap = {\n';
+    script += '      "position": "Position",\n';
+    script += '      "scale": "Scale",\n';
+    script += '      "rotation": "Rotation",\n';
+    script += '      "opacity": "Opacity"\n';
+    script += '    };\n';
+    script += '    var propName = propertyMap[kf.property.toLowerCase()] ? propertyMap[kf.property.toLowerCase()] : kf.property;\n';
+    script += '    \n';
+    script += '    var prop = layer.property(propName);\n';
+    script += '    if (!prop) {\n';
+    script += '      // Try under Transform\n';
+    script += '      var transform = layer.property("Transform");\n';
+    script += '      if (transform) {\n';
+    script += '        prop = transform.property(propName);\n';
+    script += '      }\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    if (!prop) {\n';
+    script += '      results.push({success: false, error: "Property " + propName + " not found on layer " + kf.layerIndex});\n';
+    script += '      continue;\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    // Fix zero scale values\n';
+    script += '    var value = kf.value;\n';
+    script += '    if (propName === "Scale" && value instanceof Array) {\n';
+    script += '      for (var j = 0; j < value.length; j++) {\n';
+    script += '        if (value[j] === 0) value[j] = 0.1;\n';
+    script += '      }\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    prop.setValueAtTime(kf.time, value);\n';
+    script += '    results.push({success: true, layer: kf.layerIndex, property: propName, time: kf.time});\n';
+    script += '    \n';
+    script += '  } catch (e) {\n';
+    script += '    results.push({success: false, error: e.toString(), layer: kf.layerIndex});\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    return {
-      success: true,
-      data: {
-        total: keyframes.length,
-        successful: successCount,
-        results: results
-      }
-    };
-  `
+    script += 'var successCount = 0;\n';
+    script += 'for (var i = 0; i < results.length; i++) {\n';
+    script += '  if (results[i].success) successCount++;\n';
+    script += '}\n\n';
+    
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    total: keyframes.length,\n';
+    script += '    successful: successCount,\n';
+    script += '    results: results\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  }
 };

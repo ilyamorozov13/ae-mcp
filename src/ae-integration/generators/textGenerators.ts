@@ -24,77 +24,109 @@ export const textGenerators: ScriptGeneratorModule = {
       allCaps?: boolean;
       smallCaps?: boolean;
     };
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var textLayer = comp.layers.addText();\n';
+    if (params.name) {
+      script += 'textLayer.name = "' + helpers.escapeString(params.name) + '";\n';
     }
+    script += '\n';
     
-    var textLayer = comp.layers.addText();
-    ${params.name ? `textLayer.name = "${helpers.escapeString(params.name)}";` : ''}
+    script += 'var textProp = textLayer.property("Source Text");\n';
+    script += 'var textDocument = textProp.value;\n\n';
     
-    var textProp = textLayer.property("Source Text");
-    var textDocument = textProp.value;
-    
-    // Set text content
-    textDocument.text = "${helpers.escapeString(params.text)}";
+    script += '// Set text content\n';
+    script += 'textDocument.text = "' + helpers.escapeString(params.text) + '";\n\n';
     
     // Apply text formatting
-    ${params.sourceText ? `
-      var sourceText = ${JSON.stringify(params.sourceText)};
+    if (params.sourceText) {
+      script += '// Apply text formatting\n';
+      script += 'var sourceText = ' + JSON.stringify(params.sourceText) + ';\n\n';
       
-      ${params.sourceText.font ? `textDocument.font = "${helpers.escapeString(params.sourceText.font)}";` : ''}
-      ${params.sourceText.fontSize !== undefined ? `textDocument.fontSize = ${params.sourceText.fontSize};` : ''}
-      ${params.sourceText.fillColor ? `
-        textDocument.fillColor = [${params.sourceText.fillColor.join(',')}];
-        textDocument.applyFill = true;
-      ` : ''}
-      ${params.sourceText.strokeColor ? `
-        textDocument.strokeColor = [${params.sourceText.strokeColor.join(',')}];
-        textDocument.applyStroke = true;
-        ${params.sourceText.strokeWidth !== undefined ? `textDocument.strokeWidth = ${params.sourceText.strokeWidth};` : ''}
-        ${params.sourceText.strokeOverFill !== undefined ? `textDocument.strokeOverFill = ${params.sourceText.strokeOverFill};` : ''}
-      ` : ''}
-      
-      ${params.sourceText.justification ? `
-        var justificationMap = {
-          "left": ParagraphJustification.LEFT_JUSTIFY,
-          "center": ParagraphJustification.CENTER_JUSTIFY,
-          "right": ParagraphJustification.RIGHT_JUSTIFY,
-          "justifyLeft": ParagraphJustification.FULL_JUSTIFY_LASTLINE_LEFT,
-          "justifyCenter": ParagraphJustification.FULL_JUSTIFY_LASTLINE_CENTER,
-          "justifyRight": ParagraphJustification.FULL_JUSTIFY_LASTLINE_RIGHT,
-          "justifyAll": ParagraphJustification.FULL_JUSTIFY_LASTLINE_FULL
-        };
-        var justification = justificationMap["${params.sourceText.justification}"];
-        if (justification) {
-          textDocument.justification = justification;
+      if (params.sourceText.font) {
+        script += 'textDocument.font = "' + helpers.escapeString(params.sourceText.font) + '";\n';
+      }
+      if (params.sourceText.fontSize !== undefined) {
+        script += 'textDocument.fontSize = ' + params.sourceText.fontSize + ';\n';
+      }
+      if (params.sourceText.fillColor) {
+        script += 'textDocument.fillColor = [' + params.sourceText.fillColor.join(',') + '];\n';
+        script += 'textDocument.applyFill = true;\n';
+      }
+      if (params.sourceText.strokeColor) {
+        script += 'textDocument.strokeColor = [' + params.sourceText.strokeColor.join(',') + '];\n';
+        script += 'textDocument.applyStroke = true;\n';
+        if (params.sourceText.strokeWidth !== undefined) {
+          script += 'textDocument.strokeWidth = ' + params.sourceText.strokeWidth + ';\n';
         }
-      ` : ''}
+        if (params.sourceText.strokeOverFill !== undefined) {
+          script += 'textDocument.strokeOverFill = ' + params.sourceText.strokeOverFill + ';\n';
+        }
+      }
       
-      ${params.sourceText.tracking !== undefined ? `textDocument.tracking = ${params.sourceText.tracking};` : ''}
-      ${params.sourceText.leading !== undefined ? `textDocument.leading = ${params.sourceText.leading};` : ''}
-      ${params.sourceText.baselineShift !== undefined ? `textDocument.baselineShift = ${params.sourceText.baselineShift};` : ''}
-      ${params.sourceText.verticalScale !== undefined ? `textDocument.verticalScale = ${params.sourceText.verticalScale};` : ''}
-      ${params.sourceText.horizontalScale !== undefined ? `textDocument.horizontalScale = ${params.sourceText.horizontalScale};` : ''}
-      // Note: allCaps and smallCaps are read-only properties in After Effects and cannot be set directly
-    ` : ''}
+      if (params.sourceText.justification) {
+        script += '\n';
+        script += 'var justificationMap = {\n';
+        script += '  "left": ParagraphJustification.LEFT_JUSTIFY,\n';
+        script += '  "center": ParagraphJustification.CENTER_JUSTIFY,\n';
+        script += '  "right": ParagraphJustification.RIGHT_JUSTIFY,\n';
+        script += '  "justifyLeft": ParagraphJustification.FULL_JUSTIFY_LASTLINE_LEFT,\n';
+        script += '  "justifyCenter": ParagraphJustification.FULL_JUSTIFY_LASTLINE_CENTER,\n';
+        script += '  "justifyRight": ParagraphJustification.FULL_JUSTIFY_LASTLINE_RIGHT,\n';
+        script += '  "justifyAll": ParagraphJustification.FULL_JUSTIFY_LASTLINE_FULL\n';
+        script += '};\n';
+        script += 'var justification = justificationMap["' + params.sourceText.justification + '"];\n';
+        script += 'if (justification) {\n';
+        script += '  textDocument.justification = justification;\n';
+        script += '}\n';
+      }
+      
+      if (params.sourceText.tracking !== undefined) {
+        script += 'textDocument.tracking = ' + params.sourceText.tracking + ';\n';
+      }
+      if (params.sourceText.leading !== undefined) {
+        script += 'textDocument.leading = ' + params.sourceText.leading + ';\n';
+      }
+      if (params.sourceText.baselineShift !== undefined) {
+        script += 'textDocument.baselineShift = ' + params.sourceText.baselineShift + ';\n';
+      }
+      if (params.sourceText.verticalScale !== undefined) {
+        script += 'textDocument.verticalScale = ' + params.sourceText.verticalScale + ';\n';
+      }
+      if (params.sourceText.horizontalScale !== undefined) {
+        script += 'textDocument.horizontalScale = ' + params.sourceText.horizontalScale + ';\n';
+      }
+      script += '// Note: allCaps and smallCaps are read-only properties in After Effects and cannot be set directly\n';
+      script += '\n';
+    }
     
-    // Apply the text document
-    textProp.setValue(textDocument);
+    script += '// Apply the text document\n';
+    script += 'textProp.setValue(textDocument);\n\n';
     
     // Set transform properties
-    ${params.position ? `textLayer.property("Position").setValue([${params.position.join(',')}]);` : ''}
-    ${params.anchor ? `textLayer.property("Anchor Point").setValue([${params.anchor.join(',')}]);` : ''}
+    if (params.position) {
+      script += 'textLayer.property("Position").setValue([' + params.position.join(',') + ']);\n';
+    }
+    if (params.anchor) {
+      script += 'textLayer.property("Anchor Point").setValue([' + params.anchor.join(',') + ']);\n';
+    }
+    script += '\n';
     
-    return {
-      success: true,
-      data: {
-        index: textLayer.index,
-        name: textLayer.name
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: textLayer.index,\n';
+    script += '    name: textLayer.name\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   modifyTextProperties: (params: {
     compId: number;
@@ -116,73 +148,109 @@ export const textGenerators: ScriptGeneratorModule = {
       applyFill?: boolean;
       applyStroke?: boolean;
     };
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer || !(layer instanceof TextLayer)) {
-      throw new Error("Text layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer || !(layer instanceof TextLayer)) {\n';
+    script += '  throw new Error("Text layer not found");\n';
+    script += '}\n\n';
     
-    var textProp = layer.property("Source Text");
-    var textDocument = textProp.value;
+    script += 'var textProp = layer.property("Source Text");\n';
+    script += 'var textDocument = textProp.value;\n\n';
     
-    var props = ${JSON.stringify(params.properties)};
+    script += 'var props = ' + JSON.stringify(params.properties) + ';\n\n';
     
     // Update text content if provided
-    ${params.properties.text ? `textDocument.text = "${helpers.escapeString(params.properties.text)}";` : ''}
+    if (params.properties.text) {
+      script += '// Update text content if provided\n';
+      script += 'textDocument.text = "' + helpers.escapeString(params.properties.text) + '";\n';
+    }
     
     // Update font properties
-    ${params.properties.font ? `textDocument.font = "${helpers.escapeString(params.properties.font)}";` : ''}
-    ${params.properties.fontSize !== undefined ? `textDocument.fontSize = ${params.properties.fontSize};` : ''}
+    script += '\n// Update font properties\n';
+    if (params.properties.font) {
+      script += 'textDocument.font = "' + helpers.escapeString(params.properties.font) + '";\n';
+    }
+    if (params.properties.fontSize !== undefined) {
+      script += 'textDocument.fontSize = ' + params.properties.fontSize + ';\n';
+    }
     
     // Update fill properties
-    ${params.properties.fillColor ? `textDocument.fillColor = [${params.properties.fillColor.join(',')}];` : ''}
-    ${params.properties.applyFill !== undefined ? `textDocument.applyFill = ${params.properties.applyFill};` : ''}
+    script += '\n// Update fill properties\n';
+    if (params.properties.fillColor) {
+      script += 'textDocument.fillColor = [' + params.properties.fillColor.join(',') + '];\n';
+    }
+    if (params.properties.applyFill !== undefined) {
+      script += 'textDocument.applyFill = ' + params.properties.applyFill + ';\n';
+    }
     
     // Update stroke properties
-    ${params.properties.strokeColor ? `textDocument.strokeColor = [${params.properties.strokeColor.join(',')}];` : ''}
-    ${params.properties.strokeWidth !== undefined ? `textDocument.strokeWidth = ${params.properties.strokeWidth};` : ''}
-    ${params.properties.strokeOverFill !== undefined ? `textDocument.strokeOverFill = ${params.properties.strokeOverFill};` : ''}
-    ${params.properties.applyStroke !== undefined ? `textDocument.applyStroke = ${params.properties.applyStroke};` : ''}
+    script += '\n// Update stroke properties\n';
+    if (params.properties.strokeColor) {
+      script += 'textDocument.strokeColor = [' + params.properties.strokeColor.join(',') + '];\n';
+    }
+    if (params.properties.strokeWidth !== undefined) {
+      script += 'textDocument.strokeWidth = ' + params.properties.strokeWidth + ';\n';
+    }
+    if (params.properties.strokeOverFill !== undefined) {
+      script += 'textDocument.strokeOverFill = ' + params.properties.strokeOverFill + ';\n';
+    }
+    if (params.properties.applyStroke !== undefined) {
+      script += 'textDocument.applyStroke = ' + params.properties.applyStroke + ';\n';
+    }
     
     // Update paragraph properties
-    ${params.properties.justification ? `
-      var justificationMap = {
-        "left": ParagraphJustification.LEFT_JUSTIFY,
-        "center": ParagraphJustification.CENTER_JUSTIFY,
-        "right": ParagraphJustification.RIGHT_JUSTIFY,
-        "justifyLeft": ParagraphJustification.FULL_JUSTIFY_LASTLINE_LEFT,
-        "justifyCenter": ParagraphJustification.FULL_JUSTIFY_LASTLINE_CENTER,
-        "justifyRight": ParagraphJustification.FULL_JUSTIFY_LASTLINE_RIGHT,
-        "justifyAll": ParagraphJustification.FULL_JUSTIFY_LASTLINE_FULL
-      };
-      var justification = justificationMap["${params.properties.justification}"];
-      if (justification) {
-        textDocument.justification = justification;
-      }
-    ` : ''}
+    if (params.properties.justification) {
+      script += '\n// Update paragraph properties\n';
+      script += 'var justificationMap = {\n';
+      script += '  "left": ParagraphJustification.LEFT_JUSTIFY,\n';
+      script += '  "center": ParagraphJustification.CENTER_JUSTIFY,\n';
+      script += '  "right": ParagraphJustification.RIGHT_JUSTIFY,\n';
+      script += '  "justifyLeft": ParagraphJustification.FULL_JUSTIFY_LASTLINE_LEFT,\n';
+      script += '  "justifyCenter": ParagraphJustification.FULL_JUSTIFY_LASTLINE_CENTER,\n';
+      script += '  "justifyRight": ParagraphJustification.FULL_JUSTIFY_LASTLINE_RIGHT,\n';
+      script += '  "justifyAll": ParagraphJustification.FULL_JUSTIFY_LASTLINE_FULL\n';
+      script += '};\n';
+      script += 'var justification = justificationMap["' + params.properties.justification + '"];\n';
+      script += 'if (justification) {\n';
+      script += '  textDocument.justification = justification;\n';
+      script += '}\n';
+    }
     
-    ${params.properties.tracking !== undefined ? `textDocument.tracking = ${params.properties.tracking};` : ''}
-    ${params.properties.leading !== undefined ? `textDocument.leading = ${params.properties.leading};` : ''}
-    ${params.properties.baselineShift !== undefined ? `textDocument.baselineShift = ${params.properties.baselineShift};` : ''}
-    ${params.properties.verticalScale !== undefined ? `textDocument.verticalScale = ${params.properties.verticalScale};` : ''}
-    ${params.properties.horizontalScale !== undefined ? `textDocument.horizontalScale = ${params.properties.horizontalScale};` : ''}
+    if (params.properties.tracking !== undefined) {
+      script += 'textDocument.tracking = ' + params.properties.tracking + ';\n';
+    }
+    if (params.properties.leading !== undefined) {
+      script += 'textDocument.leading = ' + params.properties.leading + ';\n';
+    }
+    if (params.properties.baselineShift !== undefined) {
+      script += 'textDocument.baselineShift = ' + params.properties.baselineShift + ';\n';
+    }
+    if (params.properties.verticalScale !== undefined) {
+      script += 'textDocument.verticalScale = ' + params.properties.verticalScale + ';\n';
+    }
+    if (params.properties.horizontalScale !== undefined) {
+      script += 'textDocument.horizontalScale = ' + params.properties.horizontalScale + ';\n';
+    }
     
-    // Apply the updated text document
-    textProp.setValue(textDocument);
+    script += '\n// Apply the updated text document\n';
+    script += 'textProp.setValue(textDocument);\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        layerIndex: layer.index
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    layerIndex: layer.index\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   addTextAnimator: (params: {
     compId: number;
@@ -196,177 +264,192 @@ export const textGenerators: ScriptGeneratorModule = {
       end?: number;
       offset?: number;
     };
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer || !(layer instanceof TextLayer)) {\n';
+    script += '  throw new Error("Text layer not found");\n';
+    script += '}\n\n';
+    
+    script += 'var textAnimators = layer.property("Text").property("Animators");\n';
+    script += 'var animator = textAnimators.addProperty("ADBE Text Animator");\n';
+    if (params.animatorName) {
+      script += 'animator.name = "' + helpers.escapeString(params.animatorName) + '";\n';
     }
+    script += '\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer || !(layer instanceof TextLayer)) {
-      throw new Error("Text layer not found");
-    }
+    script += '// Add properties to animate\n';
+    script += 'var animatorProperties = animator.property("ADBE Text Animator Properties");\n';
+    script += 'var properties = ' + JSON.stringify(params.properties) + ';\n\n';
     
-    var textAnimators = layer.property("Text").property("Animators");
-    var animator = textAnimators.addProperty("ADBE Text Animator");
-    ${params.animatorName ? `animator.name = "${helpers.escapeString(params.animatorName)}";` : ''}
+    script += 'for (var i = 0; i < properties.length; i++) {\n';
+    script += '  var propName = properties[i];\n';
+    script += '  var propMap = {\n';
+    script += '    "position": "ADBE Text Position 3D",\n';
+    script += '    "scale": "ADBE Text Scale 3D",\n';
+    script += '    "rotation": "ADBE Text Rotation",\n';
+    script += '    "opacity": "ADBE Text Opacity",\n';
+    script += '    "anchorPoint": "ADBE Text Anchor Point 3D",\n';
+    script += '    "fillColor": "ADBE Text Fill Color",\n';
+    script += '    "strokeColor": "ADBE Text Stroke Color",\n';
+    script += '    "strokeWidth": "ADBE Text Stroke Width",\n';
+    script += '    "tracking": "ADBE Text Tracking Amount",\n';
+    script += '    "lineAnchor": "ADBE Text Line Anchor",\n';
+    script += '    "blur": "ADBE Text Blur"\n';
+    script += '  };\n';
+    script += '  \n';
+    script += '  var aePropertyName = propMap[propName];\n';
+    script += '  if (aePropertyName) {\n';
+    script += '    try {\n';
+    script += '      animatorProperties.addProperty(aePropertyName);\n';
+    script += '    } catch (e) {\n';
+    script += '      // Property might not be available in this AE version\n';
+    script += '    }\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    // Add properties to animate
-    var animatorProperties = animator.property("ADBE Text Animator Properties");
-    var properties = ${JSON.stringify(params.properties)};
+    script += '// Configure selector\n';
+    script += 'var selectors = animator.property("ADBE Text Selectors");\n\n';
     
-    for (var i = 0; i < properties.length; i++) {
-      var propName = properties[i];
-      var propMap = {
-        "position": "ADBE Text Position 3D",
-        "scale": "ADBE Text Scale 3D",
-        "rotation": "ADBE Text Rotation",
-        "opacity": "ADBE Text Opacity",
-        "anchorPoint": "ADBE Text Anchor Point 3D",
-        "fillColor": "ADBE Text Fill Color",
-        "strokeColor": "ADBE Text Stroke Color",
-        "strokeWidth": "ADBE Text Stroke Width",
-        "tracking": "ADBE Text Tracking Amount",
-        "lineAnchor": "ADBE Text Line Anchor",
-        "blur": "ADBE Text Blur"
-      };
-      
-      var aePropertyName = propMap[propName];
-      if (aePropertyName) {
-        try {
-          animatorProperties.addProperty(aePropertyName);
-        } catch (e) {
-          // Property might not be available in this AE version
-        }
-      }
-    }
+    script += '// Check if there\'s already a default selector\n';
+    script += 'var selector = null;\n';
+    script += 'if (selectors.numProperties > 0) {\n';
+    script += '  selector = selectors.property(1);\n';
+    script += '} else {\n';
+    script += '  // Add a range selector if none exists\n';
+    script += '  selector = selectors.addProperty("ADBE Text Selector");\n';
+    script += '}\n';
     
-    // Configure selector
-    var selectors = animator.property("ADBE Text Selectors");
-    
-    // Check if there's already a default selector
-    var selector = null;
-    if (selectors.numProperties > 0) {
-      selector = selectors.property(1);
-    } else {
-      // Add a range selector if none exists
-      selector = selectors.addProperty("ADBE Text Selector");
-    }
-    
-    ${params.selector ? `
-      var selectorConfig = ${JSON.stringify(params.selector)};
+    if (params.selector) {
+      script += '\n';
+      script += 'var selectorConfig = ' + JSON.stringify(params.selector) + ';\n\n';
       
       // Set selector type
-      ${params.selector.type === 'wiggly' ? `
-        // Replace with wiggly selector if requested
-        if (selector) {
-          selector.remove();
-        }
-        selector = selectors.addProperty("ADBE Text Wiggly Selector");
-      ` : ''}
+      if (params.selector.type === 'wiggly') {
+        script += '// Replace with wiggly selector if requested\n';
+        script += 'if (selector) {\n';
+        script += '  selector.remove();\n';
+        script += '}\n';
+        script += 'selector = selectors.addProperty("ADBE Text Wiggly Selector");\n';
+      }
       
-      // Configure range selector properties
-      if (selector && selector.matchName === "ADBE Text Selector") {
-        try {
-          ${params.selector.basedOn ? `
-            var basedOnMap = {
-              "characters": 1,
-              "charactersExcludingSpaces": 2,
-              "words": 3,
-              "lines": 4
-            };
-            var basedOn = basedOnMap["${params.selector.basedOn}"];
-            if (basedOn) {
-              var rangeUnits = selector.property("ADBE Text Range Units");
-              if (rangeUnits) {
-                rangeUnits.setValue(basedOn);
-              }
-            }
-          ` : ''}
-          
-          ${params.selector.start !== undefined ? `
-            var rangeStart = selector.property("ADBE Text Range Start");
-            if (rangeStart) {
-              rangeStart.setValue(${params.selector.start});
-            }
-          ` : ''}
-          ${params.selector.end !== undefined ? `
-            var rangeEnd = selector.property("ADBE Text Range End");
-            if (rangeEnd) {
-              rangeEnd.setValue(${params.selector.end});
-            }
-          ` : ''}
-          ${params.selector.offset !== undefined ? `
-            var rangeOffset = selector.property("ADBE Text Range Offset");
-            if (rangeOffset) {
-              rangeOffset.setValue(${params.selector.offset});
-            }
-          ` : ''}
-        } catch (e) {
-          // Ignore selector configuration errors
-        }
+      script += '\n// Configure range selector properties\n';
+      script += 'if (selector && selector.matchName === "ADBE Text Selector") {\n';
+      script += '  try {\n';
+      
+      if (params.selector.basedOn) {
+        script += '    var basedOnMap = {\n';
+        script += '      "characters": 1,\n';
+        script += '      "charactersExcludingSpaces": 2,\n';
+        script += '      "words": 3,\n';
+        script += '      "lines": 4\n';
+        script += '    };\n';
+        script += '    var basedOn = basedOnMap["' + params.selector.basedOn + '"];\n';
+        script += '    if (basedOn) {\n';
+        script += '      var rangeUnits = selector.property("ADBE Text Range Units");\n';
+        script += '      if (rangeUnits) {\n';
+        script += '        rangeUnits.setValue(basedOn);\n';
+        script += '      }\n';
+        script += '    }\n';
       }
-    ` : ''}
+      
+      if (params.selector.start !== undefined) {
+        script += '    \n';
+        script += '    var rangeStart = selector.property("ADBE Text Range Start");\n';
+        script += '    if (rangeStart) {\n';
+        script += '      rangeStart.setValue(' + params.selector.start + ');\n';
+        script += '    }\n';
+      }
+      if (params.selector.end !== undefined) {
+        script += '    var rangeEnd = selector.property("ADBE Text Range End");\n';
+        script += '    if (rangeEnd) {\n';
+        script += '      rangeEnd.setValue(' + params.selector.end + ');\n';
+        script += '    }\n';
+      }
+      if (params.selector.offset !== undefined) {
+        script += '    var rangeOffset = selector.property("ADBE Text Range Offset");\n';
+        script += '    if (rangeOffset) {\n';
+        script += '      rangeOffset.setValue(' + params.selector.offset + ');\n';
+        script += '    }\n';
+      }
+      
+      script += '  } catch (e) {\n';
+      script += '    // Ignore selector configuration errors\n';
+      script += '  }\n';
+      script += '}\n';
+    }
+    script += '\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        animatorIndex: animator.propertyIndex,
-        animatorName: animator.name,
-        propertiesAdded: properties.length
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    animatorIndex: animator.propertyIndex,\n';
+    script += '    animatorName: animator.name,\n';
+    script += '    propertiesAdded: properties.length\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   convertTextToShape: (params: {
     compId: number;
     layerIndex: number;
     keepOriginal?: boolean;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var textLayer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!textLayer || !(textLayer instanceof TextLayer)) {\n';
+    script += '  throw new Error("Text layer not found");\n';
+    script += '}\n\n';
+    
+    script += 'var originalName = textLayer.name;\n';
+    script += 'var originalIndex = textLayer.index;\n\n';
+    
+    script += '// Store current time\n';
+    script += 'var currentTime = comp.time;\n\n';
+    
+    script += '// Create shape from text\n';
+    script += 'textLayer.selected = true;\n';
+    script += 'app.executeCommand(3781); // Create Shapes from Text command ID\n\n';
+    
+    script += '// The new shape layer is created above the text layer\n';
+    script += 'var shapeLayer = comp.layer(originalIndex);\n';
+    script += 'shapeLayer.name = originalName + " Outlines";\n\n';
+    
+    if (!params.keepOriginal) {
+      script += '// Remove original text layer\n';
+      script += 'textLayer.remove();\n';
+    } else {
+      script += '// Keep original but disable it\n';
+      script += 'textLayer.enabled = false;\n';
+      script += 'textLayer.name = originalName + " (Original)";\n';
     }
+    script += '\n';
     
-    var textLayer = comp.layer(${params.layerIndex});
-    if (!textLayer || !(textLayer instanceof TextLayer)) {
-      throw new Error("Text layer not found");
-    }
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    originalLayerName: originalName,\n';
+    script += '    shapeLayerIndex: shapeLayer.index,\n';
+    script += '    shapeLayerName: shapeLayer.name,\n';
+    script += '    originalKept: ' + (params.keepOriginal ? 'true' : 'false') + '\n';
+    script += '  }\n';
+    script += '};';
     
-    var originalName = textLayer.name;
-    var originalIndex = textLayer.index;
-    
-    // Store current time
-    var currentTime = comp.time;
-    
-    // Create shape from text
-    textLayer.selected = true;
-    app.executeCommand(3781); // Create Shapes from Text command ID
-    
-    // The new shape layer is created above the text layer
-    var shapeLayer = comp.layer(originalIndex);
-    shapeLayer.name = originalName + " Outlines";
-    
-    ${!params.keepOriginal ? `
-      // Remove original text layer
-      textLayer.remove();
-    ` : `
-      // Keep original but disable it
-      textLayer.enabled = false;
-      textLayer.name = originalName + " (Original)";
-    `}
-    
-    return {
-      success: true,
-      data: {
-        originalLayerName: originalName,
-        shapeLayerIndex: shapeLayer.index,
-        shapeLayerName: shapeLayer.name,
-        originalKept: ${params.keepOriginal ? 'true' : 'false'}
-      }
-    };
-  `,
+    return script;
+  },
 
   createTextOnPath: (params: {
     compId: number;
@@ -378,60 +461,68 @@ export const textGenerators: ScriptGeneratorModule = {
       closed?: boolean;
     };
     textProperties?: any;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    // Create text layer
-    var textLayer = comp.layers.addText("${helpers.escapeString(params.text)}");
-    textLayer.name = "Text on Path";
+    script += '// Create text layer\n';
+    script += 'var textLayer = comp.layers.addText("' + helpers.escapeString(params.text) + '");\n';
+    script += 'textLayer.name = "Text on Path";\n\n';
     
     // Apply text properties if provided
-    ${params.textProperties ? `
-      var textProp = textLayer.property("Source Text");
-      var textDocument = textProp.value;
-      var textProps = ${JSON.stringify(params.textProperties)};
+    if (params.textProperties) {
+      script += '// Apply text properties if provided\n';
+      script += 'var textProp = textLayer.property("Source Text");\n';
+      script += 'var textDocument = textProp.value;\n';
+      script += 'var textProps = ' + JSON.stringify(params.textProperties) + ';\n\n';
       
-      // Apply all text properties similar to modifyTextProperties
-      if (textProps.font) textDocument.font = textProps.font;
-      if (textProps.fontSize !== undefined) textDocument.fontSize = textProps.fontSize;
-      if (textProps.fillColor) {
-        textDocument.fillColor = textProps.fillColor;
-        textDocument.applyFill = true;
-      }
+      script += '// Apply all text properties similar to modifyTextProperties\n';
+      script += 'if (textProps.font) textDocument.font = textProps.font;\n';
+      script += 'if (textProps.fontSize !== undefined) textDocument.fontSize = textProps.fontSize;\n';
+      script += 'if (textProps.fillColor) {\n';
+      script += '  textDocument.fillColor = textProps.fillColor;\n';
+      script += '  textDocument.applyFill = true;\n';
+      script += '}\n\n';
       
-      textProp.setValue(textDocument);
-    ` : ''}
+      script += 'textProp.setValue(textDocument);\n\n';
+    }
     
-    // Create mask from path
-    var mask = textLayer.property("Masks").addProperty("Mask");
-    mask.name = "Text Path";
+    script += '// Create mask from path\n';
+    script += 'var mask = textLayer.property("Masks").addProperty("Mask");\n';
+    script += 'mask.name = "Text Path";\n\n';
     
-    var shape = new Shape();
-    shape.vertices = ${JSON.stringify(params.path.vertices)};
-    ${params.path.inTangents ? `shape.inTangents = ${JSON.stringify(params.path.inTangents)};` : ''}
-    ${params.path.outTangents ? `shape.outTangents = ${JSON.stringify(params.path.outTangents)};` : ''}
-    shape.closed = ${params.path.closed ? 'true' : 'false'};
+    script += 'var shape = new Shape();\n';
+    script += 'shape.vertices = ' + JSON.stringify(params.path.vertices) + ';\n';
+    if (params.path.inTangents) {
+      script += 'shape.inTangents = ' + JSON.stringify(params.path.inTangents) + ';\n';
+    }
+    if (params.path.outTangents) {
+      script += 'shape.outTangents = ' + JSON.stringify(params.path.outTangents) + ';\n';
+    }
+    script += 'shape.closed = ' + (params.path.closed ? 'true' : 'false') + ';\n\n';
     
-    mask.property("Mask Path").setValue(shape);
+    script += 'mask.property("Mask Path").setValue(shape);\n\n';
     
-    // Set mask mode to None so it doesn't actually mask
-    mask.maskMode = MaskMode.NONE;
+    script += '// Set mask mode to None so it doesn\'t actually mask\n';
+    script += 'mask.maskMode = MaskMode.NONE;\n\n';
     
-    // Add path options to text
-    var textProp = textLayer.property("Text");
-    var pathOptions = textProp.property("Path Options");
-    pathOptions.property("Path").setValue(1); // First mask
+    script += '// Add path options to text\n';
+    script += 'var textProp = textLayer.property("Text");\n';
+    script += 'var pathOptions = textProp.property("Path Options");\n';
+    script += 'pathOptions.property("Path").setValue(1); // First mask\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerIndex: textLayer.index,
-        layerName: textLayer.name,
-        maskIndex: mask.propertyIndex
-      }
-    };
-  `
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerIndex: textLayer.index,\n';
+    script += '    layerName: textLayer.name,\n';
+    script += '    maskIndex: mask.propertyIndex\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  }
 };

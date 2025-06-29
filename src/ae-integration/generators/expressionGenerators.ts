@@ -8,201 +8,216 @@ export const expressionGenerators: ScriptGeneratorModule = {
     propertyPath: string;
     expression: string;
     enabled?: boolean;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
+    
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
+    
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  // Handle special cases\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else if (part === "Effects" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Effect Parade");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
+    
+    script += 'if (!prop.canSetExpression) {\n';
+    script += '  throw new Error("Cannot set expression on this property");\n';
+    script += '}\n\n';
+    
+    script += 'prop.expression = "' + helpers.escapeString(params.expression) + '";\n';
+    if (params.enabled !== undefined) {
+      script += 'prop.expressionEnabled = ' + params.enabled + ';\n';
     }
+    script += '\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    propertyPath: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    expressionSet: true,\n';
+    script += '    enabled: prop.expressionEnabled\n';
+    script += '  }\n';
+    script += '};';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
-    
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      // Handle special cases
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else if (part === "Effects" && prop === layer) {
-        prop = prop.property("ADBE Effect Parade");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
-    
-    if (!prop.canSetExpression) {
-      throw new Error("Cannot set expression on this property");
-    }
-    
-    prop.expression = "${helpers.escapeString(params.expression)}";
-    ${params.enabled !== undefined ? `prop.expressionEnabled = ${params.enabled};` : ''}
-    
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        propertyPath: "${helpers.escapeString(params.propertyPath)}",
-        expressionSet: true,
-        enabled: prop.expressionEnabled
-      }
-    };
-  `,
+    return script;
+  },
 
   getExpression: (params: {
     compId: number;
     layerIndex: number;
     propertyPath: string;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else if (part === "Effects" && prop === layer) {
-        prop = prop.property("ADBE Effect Parade");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else if (part === "Effects" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Effect Parade");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    return {
-      success: true,
-      data: {
-        expression: prop.expression,
-        enabled: prop.expressionEnabled,
-        hasExpression: prop.expression !== "",
-        canSetExpression: prop.canSetExpression,
-        propertyName: prop.name
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    expression: prop.expression,\n';
+    script += '    enabled: prop.expressionEnabled,\n';
+    script += '    hasExpression: prop.expression !== "",\n';
+    script += '    canSetExpression: prop.canSetExpression,\n';
+    script += '    propertyName: prop.name\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   removeExpression: (params: {
     compId: number;
     layerIndex: number;
     propertyPath: string;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else if (part === "Effects" && prop === layer) {
-        prop = prop.property("ADBE Effect Parade");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else if (part === "Effects" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Effect Parade");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    prop.expression = "";
+    script += 'prop.expression = "";\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        propertyPath: "${helpers.escapeString(params.propertyPath)}",
-        expressionRemoved: true
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    propertyPath: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    expressionRemoved: true\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   enableExpression: (params: {
     compId: number;
     layerIndex: number;
     propertyPath: string;
     enabled: boolean;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else if (part === "Effects" && prop === layer) {
-        prop = prop.property("ADBE Effect Parade");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else if (part === "Effects" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Effect Parade");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    if (!prop.canSetExpression) {
-      throw new Error("Cannot set expression on this property");
-    }
+    script += 'if (!prop.canSetExpression) {\n';
+    script += '  throw new Error("Cannot set expression on this property");\n';
+    script += '}\n\n';
     
-    if (prop.expression === "") {
-      throw new Error("No expression to enable");
-    }
+    script += 'if (prop.expression === "") {\n';
+    script += '  throw new Error("No expression to enable");\n';
+    script += '}\n\n';
     
-    prop.expressionEnabled = ${params.enabled};
+    script += 'prop.expressionEnabled = ' + params.enabled + ';\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        propertyPath: "${helpers.escapeString(params.propertyPath)}",
-        enabled: prop.expressionEnabled
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    propertyPath: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    enabled: prop.expressionEnabled\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   batchSetExpressions: (params: {
     compId: number;
@@ -212,88 +227,91 @@ export const expressionGenerators: ScriptGeneratorModule = {
       expression: string;
       enabled?: boolean;
     }>;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var results = [];
-    var expressions = ${JSON.stringify(params.expressions)};
+    script += 'var results = [];\n';
+    script += 'var expressions = ' + JSON.stringify(params.expressions) + ';\n\n';
     
-    for (var i = 0; i < expressions.length; i++) {
-      var expr = expressions[i];
-      try {
-        var layer = comp.layer(expr.layerIndex);
-        if (!layer) {
-          results.push({
-            success: false,
-            error: "Layer " + expr.layerIndex + " not found"
-          });
-          continue;
-        }
-        
-        // Navigate property path
-        var pathParts = expr.propertyPath.split(".");
-        var prop = layer;
-        
-        for (var j = 0; j < pathParts.length; j++) {
-          var part = pathParts[j];
-          if (part === "Transform" && prop === layer) {
-            prop = prop.property("ADBE Transform Group");
-          } else if (part === "Effects" && prop === layer) {
-            prop = prop.property("ADBE Effect Parade");
-          } else {
-            prop = prop.property(part);
-          }
-          
-          if (!prop) {
-            throw new Error("Property not found: " + pathParts.slice(0, j + 1).join("."));
-          }
-        }
-        
-        if (!prop.canSetExpression) {
-          results.push({
-            success: false,
-            error: "Cannot set expression on " + expr.propertyPath
-          });
-          continue;
-        }
-        
-        prop.expression = expr.expression;
-        if (expr.enabled !== undefined) {
-          prop.expressionEnabled = expr.enabled;
-        }
-        
-        results.push({
-          success: true,
-          layerIndex: expr.layerIndex,
-          propertyPath: expr.propertyPath
-        });
-        
-      } catch (e) {
-        results.push({
-          success: false,
-          error: e.toString(),
-          layerIndex: expr.layerIndex
-        });
-      }
-    }
+    script += 'for (var i = 0; i < expressions.length; i++) {\n';
+    script += '  var expr = expressions[i];\n';
+    script += '  try {\n';
+    script += '    var layer = comp.layer(expr.layerIndex);\n';
+    script += '    if (!layer) {\n';
+    script += '      results.push({\n';
+    script += '        success: false,\n';
+    script += '        error: "Layer " + expr.layerIndex + " not found"\n';
+    script += '      });\n';
+    script += '      continue;\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    // Navigate property path\n';
+    script += '    var pathParts = expr.propertyPath.split(".");\n';
+    script += '    var prop = layer;\n';
+    script += '    \n';
+    script += '    for (var j = 0; j < pathParts.length; j++) {\n';
+    script += '      var part = pathParts[j];\n';
+    script += '      if (part === "Transform" && prop === layer) {\n';
+    script += '        prop = prop.property("ADBE Transform Group");\n';
+    script += '      } else if (part === "Effects" && prop === layer) {\n';
+    script += '        prop = prop.property("ADBE Effect Parade");\n';
+    script += '      } else {\n';
+    script += '        prop = prop.property(part);\n';
+    script += '      }\n';
+    script += '      \n';
+    script += '      if (!prop) {\n';
+    script += '        throw new Error("Property not found: " + pathParts.slice(0, j + 1).join("."));\n';
+    script += '      }\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    if (!prop.canSetExpression) {\n';
+    script += '      results.push({\n';
+    script += '        success: false,\n';
+    script += '        error: "Cannot set expression on " + expr.propertyPath\n';
+    script += '      });\n';
+    script += '      continue;\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    prop.expression = expr.expression;\n';
+    script += '    if (expr.enabled !== undefined) {\n';
+    script += '      prop.expressionEnabled = expr.enabled;\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    results.push({\n';
+    script += '      success: true,\n';
+    script += '      layerIndex: expr.layerIndex,\n';
+    script += '      propertyPath: expr.propertyPath\n';
+    script += '    });\n';
+    script += '    \n';
+    script += '  } catch (e) {\n';
+    script += '    results.push({\n';
+    script += '      success: false,\n';
+    script += '      error: e.toString(),\n';
+    script += '      layerIndex: expr.layerIndex\n';
+    script += '    });\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    var successCount = 0;
-    for (var i = 0; i < results.length; i++) {
-      if (results[i].success) successCount++;
-    }
+    script += 'var successCount = 0;\n';
+    script += 'for (var i = 0; i < results.length; i++) {\n';
+    script += '  if (results[i].success) successCount++;\n';
+    script += '}\n\n';
     
-    return {
-      success: true,
-      data: {
-        total: expressions.length,
-        successful: successCount,
-        results: results
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    total: expressions.length,\n';
+    script += '    successful: successCount,\n';
+    script += '    results: results\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   addExpressionControl: (params: {
     compId: number;
@@ -301,67 +319,75 @@ export const expressionGenerators: ScriptGeneratorModule = {
     controlType: string;
     name: string;
     value?: any;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    var effectName;
-    var controlType = "${params.controlType}";
+    script += 'var effectName;\n';
+    script += 'var controlType = "' + params.controlType + '";\n\n';
     
-    switch(controlType) {
-      case "slider":
-        effectName = "ADBE Slider Control";
-        break;
-      case "point":
-        effectName = "ADBE Point Control";
-        break;
-      case "angle":
-        effectName = "ADBE Angle Control";
-        break;
-      case "checkbox":
-        effectName = "ADBE Checkbox Control";
-        break;
-      case "color":
-        effectName = "ADBE Color Control";
-        break;
-      case "layer":
-        effectName = "ADBE Layer Control";
-        break;
-      case "point3d":
-        effectName = "ADBE Point3D Control";
-        break;
-      default:
-        throw new Error("Invalid control type: " + controlType);
-    }
+    script += 'switch(controlType) {\n';
+    script += '  case "slider":\n';
+    script += '    effectName = "ADBE Slider Control";\n';
+    script += '    break;\n';
+    script += '  case "point":\n';
+    script += '    effectName = "ADBE Point Control";\n';
+    script += '    break;\n';
+    script += '  case "angle":\n';
+    script += '    effectName = "ADBE Angle Control";\n';
+    script += '    break;\n';
+    script += '  case "checkbox":\n';
+    script += '    effectName = "ADBE Checkbox Control";\n';
+    script += '    break;\n';
+    script += '  case "color":\n';
+    script += '    effectName = "ADBE Color Control";\n';
+    script += '    break;\n';
+    script += '  case "layer":\n';
+    script += '    effectName = "ADBE Layer Control";\n';
+    script += '    break;\n';
+    script += '  case "point3d":\n';
+    script += '    effectName = "ADBE Point3D Control";\n';
+    script += '    break;\n';
+    script += '  default:\n';
+    script += '    throw new Error("Invalid control type: " + controlType);\n';
+    script += '}\n\n';
     
-    var effect = layer.property("Effects").addProperty(effectName);
-    effect.name = "${helpers.escapeString(params.name)}";
+    script += 'var effect = layer.property("Effects").addProperty(effectName);\n';
+    script += 'effect.name = "' + helpers.escapeString(params.name) + '";\n\n';
     
     // Set initial value if provided
-    ${params.value !== undefined ? `
-      var control = effect.property(1);
-      if (control) {
-        control.setValue(${Array.isArray(params.value) ? `[${params.value.join(',')}]` : params.value});
+    if (params.value !== undefined) {
+      script += '// Set initial value if provided\n';
+      script += 'var control = effect.property(1);\n';
+      script += 'if (control) {\n';
+      if (Array.isArray(params.value)) {
+        script += '  control.setValue([' + params.value.join(',') + ']);\n';
+      } else {
+        script += '  control.setValue(' + params.value + ');\n';
       }
-    ` : ''}
+      script += '}\n\n';
+    }
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        controlName: effect.name,
-        controlType: controlType,
-        effectIndex: effect.propertyIndex
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    controlName: effect.name,\n';
+    script += '    controlType: controlType,\n';
+    script += '    effectIndex: effect.propertyIndex\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   linkPropertiesWithExpression: (params: {
     compId: number;
@@ -373,69 +399,72 @@ export const expressionGenerators: ScriptGeneratorModule = {
     multiplier?: number;
     offsetValue?: any;
     customExpression?: string;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var sourceLayer = comp.layer(${params.sourceLayer});
-    var targetLayer = comp.layer(${params.targetLayer});
+    script += 'var sourceLayer = comp.layer(' + params.sourceLayer + ');\n';
+    script += 'var targetLayer = comp.layer(' + params.targetLayer + ');\n\n';
     
-    if (!sourceLayer) throw new Error("Source layer not found");
-    if (!targetLayer) throw new Error("Target layer not found");
+    script += 'if (!sourceLayer) throw new Error("Source layer not found");\n';
+    script += 'if (!targetLayer) throw new Error("Target layer not found");\n\n';
     
-    var linkType = "${params.linkType || 'direct'}";
-    var expression = "";
+    script += 'var linkType = "' + (params.linkType || 'direct') + '";\n';
+    script += 'var expression = "";\n\n';
     
-    switch(linkType) {
-      case "direct":
-        expression = 'thisComp.layer(' + ${params.sourceLayer} + ').transform.' + "${helpers.escapeString(params.sourceProperty)}";
-        break;
-        
-      case "inverse":
-        expression = '-thisComp.layer(' + ${params.sourceLayer} + ').transform.' + "${helpers.escapeString(params.sourceProperty)}";
-        break;
-        
-      case "offset":
-        var offsetValue = ${params.offsetValue ? JSON.stringify(params.offsetValue) : 'null'};
-        if (offsetValue) {
-          if (Array.isArray(offsetValue)) {
-            expression = 'thisComp.layer(' + ${params.sourceLayer} + ').transform.' + "${helpers.escapeString(params.sourceProperty)}" + ' + [' + offsetValue.join(',') + ']';
-          } else {
-            expression = 'thisComp.layer(' + ${params.sourceLayer} + ').transform.' + "${helpers.escapeString(params.sourceProperty)}" + ' + ' + offsetValue;
-          }
-        }
-        break;
-        
-      case "multiply":
-        var multiplier = ${params.multiplier || 1};
-        expression = 'thisComp.layer(' + ${params.sourceLayer} + ').transform.' + "${helpers.escapeString(params.sourceProperty)}" + ' * ' + multiplier;
-        break;
-        
-      case "custom":
-        expression = "${helpers.escapeString(params.customExpression || '')}";
-        break;
-    }
+    script += 'switch(linkType) {\n';
+    script += '  case "direct":\n';
+    script += '    expression = "thisComp.layer(' + params.sourceLayer + ').transform.' + helpers.escapeString(params.sourceProperty) + '";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "inverse":\n';
+    script += '    expression = "-thisComp.layer(' + params.sourceLayer + ').transform.' + helpers.escapeString(params.sourceProperty) + '";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "offset":\n';
+    script += '    var offsetValue = ' + (params.offsetValue ? JSON.stringify(params.offsetValue) : 'null') + ';\n';
+    script += '    if (offsetValue) {\n';
+    script += '      if (Array.isArray(offsetValue)) {\n';
+    script += '        expression = "thisComp.layer(' + params.sourceLayer + ').transform.' + helpers.escapeString(params.sourceProperty) + ' + [" + offsetValue.join(",") + "]";\n';
+    script += '      } else {\n';
+    script += '        expression = "thisComp.layer(' + params.sourceLayer + ').transform.' + helpers.escapeString(params.sourceProperty) + ' + " + offsetValue;\n';
+    script += '      }\n';
+    script += '    }\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "multiply":\n';
+    script += '    var multiplier = ' + (params.multiplier || 1) + ';\n';
+    script += '    expression = "thisComp.layer(' + params.sourceLayer + ').transform.' + helpers.escapeString(params.sourceProperty) + ' * " + multiplier;\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "custom":\n';
+    script += '    expression = "' + helpers.escapeString(params.customExpression || '') + '";\n';
+    script += '    break;\n';
+    script += '}\n\n';
     
-    // Apply expression to target property
-    var targetProp = targetLayer.property("Transform").property("${helpers.escapeString(params.targetProperty)}");
-    if (!targetProp) {
-      throw new Error("Target property not found");
-    }
+    script += '// Apply expression to target property\n';
+    script += 'var targetProp = targetLayer.property("Transform").property("' + helpers.escapeString(params.targetProperty) + '");\n';
+    script += 'if (!targetProp) {\n';
+    script += '  throw new Error("Target property not found");\n';
+    script += '}\n\n';
     
-    targetProp.expression = expression;
+    script += 'targetProp.expression = expression;\n\n';
     
-    return {
-      success: true,
-      data: {
-        sourceLayer: sourceLayer.name,
-        targetLayer: targetLayer.name,
-        linkType: linkType,
-        expression: expression
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    sourceLayer: sourceLayer.name,\n';
+    script += '    targetLayer: targetLayer.name,\n';
+    script += '    linkType: linkType,\n';
+    script += '    expression: expression\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   addWiggleExpression: (params: {
     compId: number;
@@ -446,62 +475,65 @@ export const expressionGenerators: ScriptGeneratorModule = {
     octaves?: number;
     ampMultiplier?: number;
     time?: number;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    var freq = ${params.frequency || 5};
-    var amp = ${params.amplitude || 50};
-    var octaves = ${params.octaves || 1};
-    var ampMult = ${params.ampMultiplier || 0.5};
-    var timeOffset = ${params.time || 0};
+    script += 'var freq = ' + (params.frequency || 5) + ';\n';
+    script += 'var amp = ' + (params.amplitude || 50) + ';\n';
+    script += 'var octaves = ' + (params.octaves || 1) + ';\n';
+    script += 'var ampMult = ' + (params.ampMultiplier || 0.5) + ';\n';
+    script += 'var timeOffset = ' + (params.time || 0) + ';\n\n';
     
-    var expression = "wiggle(" + freq + ", " + amp;
+    script += 'var expression = "wiggle(" + freq + ", " + amp;\n\n';
     
-    if (octaves !== 1 || ampMult !== 0.5 || timeOffset !== 0) {
-      expression += ", " + octaves + ", " + ampMult;
-      if (timeOffset !== 0) {
-        expression += ", time + " + timeOffset;
-      }
-    }
+    script += 'if (octaves !== 1 || ampMult !== 0.5 || timeOffset !== 0) {\n';
+    script += '  expression += ", " + octaves + ", " + ampMult;\n';
+    script += '  if (timeOffset !== 0) {\n';
+    script += '    expression += ", time + " + timeOffset;\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    expression += ")";
+    script += 'expression += ")";\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    prop.expression = expression;
+    script += 'prop.expression = expression;\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        propertyPath: "${helpers.escapeString(params.propertyPath)}",
-        expression: expression
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    propertyPath: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    expression: expression\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   addLoopExpression: (params: {
     compId: number;
@@ -509,81 +541,84 @@ export const expressionGenerators: ScriptGeneratorModule = {
     propertyPath: string;
     loopType?: string;
     numKeyframes?: number;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    var loopType = "${params.loopType || 'cycle'}";
-    var numKeyframes = ${params.numKeyframes || 0};
+    script += 'var loopType = "' + (params.loopType || 'cycle') + '";\n';
+    script += 'var numKeyframes = ' + (params.numKeyframes || 0) + ';\n\n';
     
-    var expression = "";
+    script += 'var expression = "";\n\n';
     
-    switch(loopType) {
-      case "cycle":
-        expression = numKeyframes > 0 ? 
-          "loopOut(\\"cycle\\", " + numKeyframes + ")" : 
-          "loopOut(\\"cycle\\")";
-        break;
-        
-      case "pingpong":
-        expression = numKeyframes > 0 ? 
-          "loopOut(\\"pingpong\\", " + numKeyframes + ")" : 
-          "loopOut(\\"pingpong\\")";
-        break;
-        
-      case "offset":
-        expression = numKeyframes > 0 ? 
-          "loopOut(\\"offset\\", " + numKeyframes + ")" : 
-          "loopOut(\\"offset\\")";
-        break;
-        
-      case "continue":
-        expression = numKeyframes > 0 ? 
-          "loopOut(\\"continue\\", " + numKeyframes + ")" : 
-          "loopOut(\\"continue\\")";
-        break;
-    }
+    script += 'switch(loopType) {\n';
+    script += '  case "cycle":\n';
+    script += '    expression = numKeyframes > 0 ? \n';
+    script += '      "loopOut(\\\\"cycle\\\\", " + numKeyframes + ")" : \n';
+    script += '      "loopOut(\\\\"cycle\\\\")";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "pingpong":\n';
+    script += '    expression = numKeyframes > 0 ? \n';
+    script += '      "loopOut(\\\\"pingpong\\\\", " + numKeyframes + ")" : \n';
+    script += '      "loopOut(\\\\"pingpong\\\\")";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "offset":\n';
+    script += '    expression = numKeyframes > 0 ? \n';
+    script += '      "loopOut(\\\\"offset\\\\", " + numKeyframes + ")" : \n';
+    script += '      "loopOut(\\\\"offset\\\\")";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "continue":\n';
+    script += '    expression = numKeyframes > 0 ? \n';
+    script += '      "loopOut(\\\\"continue\\\\", " + numKeyframes + ")" : \n';
+    script += '      "loopOut(\\\\"continue\\\\")";\n';
+    script += '    break;\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    if (prop.numKeys < 2) {
-      throw new Error("Property must have at least 2 keyframes for loop expression");
-    }
+    script += 'if (prop.numKeys < 2) {\n';
+    script += '  throw new Error("Property must have at least 2 keyframes for loop expression");\n';
+    script += '}\n\n';
     
-    prop.expression = expression;
+    script += 'prop.expression = expression;\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        propertyPath: "${helpers.escapeString(params.propertyPath)}",
-        expression: expression,
-        loopType: loopType
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    propertyPath: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    expression: expression,\n';
+    script += '    loopType: loopType\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   convertKeyframesToExpression: (params: {
     compId: number;
@@ -591,120 +626,123 @@ export const expressionGenerators: ScriptGeneratorModule = {
     propertyPath: string;
     expressionType?: string;
     customExpression?: string;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    if (prop.numKeys < 2) {
-      throw new Error("Property must have at least 2 keyframes to convert");
-    }
+    script += 'if (prop.numKeys < 2) {\n';
+    script += '  throw new Error("Property must have at least 2 keyframes to convert");\n';
+    script += '}\n\n';
     
-    var expressionType = "${params.expressionType || 'linear'}";
-    var expression = "";
+    script += 'var expressionType = "' + (params.expressionType || 'linear') + '";\n';
+    script += 'var expression = "";\n\n';
     
-    // Store keyframe data before clearing
-    var keyframeData = [];
-    for (var i = 1; i <= prop.numKeys; i++) {
-      keyframeData.push({
-        time: prop.keyTime(i),
-        value: prop.keyValue(i)
-      });
-    }
+    script += '// Store keyframe data before clearing\n';
+    script += 'var keyframeData = [];\n';
+    script += 'for (var i = 1; i <= prop.numKeys; i++) {\n';
+    script += '  keyframeData.push({\n';
+    script += '    time: prop.keyTime(i),\n';
+    script += '    value: prop.keyValue(i)\n';
+    script += '  });\n';
+    script += '}\n\n';
     
-    switch(expressionType) {
-      case "linear":
-        expression = "linear(time, " + keyframeData[0].time + ", " + keyframeData[keyframeData.length-1].time + ", " + 
-                    JSON.stringify(keyframeData[0].value) + ", " + JSON.stringify(keyframeData[keyframeData.length-1].value) + ")";
-        break;
-        
-      case "ease":
-        expression = "ease(time, " + keyframeData[0].time + ", " + keyframeData[keyframeData.length-1].time + ", " + 
-                    JSON.stringify(keyframeData[0].value) + ", " + JSON.stringify(keyframeData[keyframeData.length-1].value) + ")";
-        break;
-        
-      case "bounce":
-        expression = "// Bounce expression\\n" +
-                    "amp = .1;\\n" +
-                    "freq = 2.0;\\n" +
-                    "decay = 2.0;\\n" +
-                    "n = 0;\\n" +
-                    "if (numKeys > 0){\\n" +
-                    "  n = nearestKey(time).index;\\n" +
-                    "  if (key(n).time > time){n--;}\\n" +
-                    "}\\n" +
-                    "if (n == 0){ t = 0; }\\n" +
-                    "else{t = time - key(n).time;}\\n" +
-                    "if (n > 0 && t < 1){\\n" +
-                    "  v = velocityAtTime(key(n).time - thisComp.frameDuration/10);\\n" +
-                    "  value + v*amp*Math.sin(freq*t*2*Math.PI)/Math.exp(decay*t);\\n" +
-                    "}else{value}";
-        break;
-        
-      case "elastic":
-        expression = "// Elastic expression\\n" +
-                    "amp = .05;\\n" +
-                    "freq = 4.0;\\n" +
-                    "decay = 7.0;\\n" +
-                    "n = 0;\\n" +
-                    "if (numKeys > 0){\\n" +
-                    "  n = nearestKey(time).index;\\n" +
-                    "  if (key(n).time > time){n--;}\\n" +
-                    "}\\n" +
-                    "if (n == 0){ t = 0; }\\n" +
-                    "else{t = time - key(n).time;}\\n" +
-                    "if (n > 0 && t < 1){\\n" +
-                    "  v = velocityAtTime(key(n).time - thisComp.frameDuration/10);\\n" +
-                    "  value + v*amp*Math.sin(freq*t*2*Math.PI)/Math.exp(decay*t);\\n" +
-                    "}else{value}";
-        break;
-        
-      case "custom":
-        expression = "${helpers.escapeString(params.customExpression || '')}";
-        break;
-    }
+    script += 'switch(expressionType) {\n';
+    script += '  case "linear":\n';
+    script += '    expression = "linear(time, " + keyframeData[0].time + ", " + keyframeData[keyframeData.length-1].time + ", " + \n';
+    script += '                JSON.stringify(keyframeData[0].value) + ", " + JSON.stringify(keyframeData[keyframeData.length-1].value) + ")";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "ease":\n';
+    script += '    expression = "ease(time, " + keyframeData[0].time + ", " + keyframeData[keyframeData.length-1].time + ", " + \n';
+    script += '                JSON.stringify(keyframeData[0].value) + ", " + JSON.stringify(keyframeData[keyframeData.length-1].value) + ")";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "bounce":\n';
+    script += '    expression = "// Bounce expression\\n" +\n';
+    script += '                "amp = .1;\\n" +\n';
+    script += '                "freq = 2.0;\\n" +\n';
+    script += '                "decay = 2.0;\\n" +\n';
+    script += '                "n = 0;\\n" +\n';
+    script += '                "if (numKeys > 0){\\n" +\n';
+    script += '                "  n = nearestKey(time).index;\\n" +\n';
+    script += '                "  if (key(n).time > time){n--;}\\n" +\n';
+    script += '                "}\\n" +\n';
+    script += '                "if (n == 0){ t = 0; }\\n" +\n';
+    script += '                "else{t = time - key(n).time;}\\n" +\n';
+    script += '                "if (n > 0 && t < 1){\\n" +\n';
+    script += '                "  v = velocityAtTime(key(n).time - thisComp.frameDuration/10);\\n" +\n';
+    script += '                "  value + v*amp*Math.sin(freq*t*2*Math.PI)/Math.exp(decay*t);\\n" +\n';
+    script += '                "}else{value}";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "elastic":\n';
+    script += '    expression = "// Elastic expression\\n" +\n';
+    script += '                "amp = .05;\\n" +\n';
+    script += '                "freq = 4.0;\\n" +\n';
+    script += '                "decay = 7.0;\\n" +\n';
+    script += '                "n = 0;\\n" +\n';
+    script += '                "if (numKeys > 0){\\n" +\n';
+    script += '                "  n = nearestKey(time).index;\\n" +\n';
+    script += '                "  if (key(n).time > time){n--;}\\n" +\n';
+    script += '                "}\\n" +\n';
+    script += '                "if (n == 0){ t = 0; }\\n" +\n';
+    script += '                "else{t = time - key(n).time;}\\n" +\n';
+    script += '                "if (n > 0 && t < 1){\\n" +\n';
+    script += '                "  v = velocityAtTime(key(n).time - thisComp.frameDuration/10);\\n" +\n';
+    script += '                "  value + v*amp*Math.sin(freq*t*2*Math.PI)/Math.exp(decay*t);\\n" +\n';
+    script += '                "}else{value}";\n';
+    script += '    break;\n';
+    script += '    \n';
+    script += '  case "custom":\n';
+    script += '    expression = "' + helpers.escapeString(params.customExpression || '') + '";\n';
+    script += '    break;\n';
+    script += '}\n\n';
     
-    // Clear keyframes
-    while (prop.numKeys > 0) {
-      prop.removeKey(1);
-    }
+    script += '// Clear keyframes\n';
+    script += 'while (prop.numKeys > 0) {\n';
+    script += '  prop.removeKey(1);\n';
+    script += '}\n\n';
     
-    // Set expression
-    prop.expression = expression;
+    script += '// Set expression\n';
+    script += 'prop.expression = expression;\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        propertyPath: "${helpers.escapeString(params.propertyPath)}",
-        expression: expression,
-        originalKeyframes: keyframeData.length
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    propertyPath: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    expression: expression,\n';
+    script += '    originalKeyframes: keyframeData.length\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   saveExpressionPreset: (params: {
     name: string;
@@ -712,19 +750,22 @@ export const expressionGenerators: ScriptGeneratorModule = {
     category?: string;
     description?: string;
     parameters?: any[];
-  }) => `
-    // This would typically save to a preferences file or database
-    // For now, we'll just return success
+  }) => {
+    let script = '';
+    script += '// This would typically save to a preferences file or database\n';
+    script += '// For now, we\'ll just return success\n\n';
     
-    return {
-      success: true,
-      data: {
-        name: "${helpers.escapeString(params.name)}",
-        category: "${helpers.escapeString(params.category || 'Custom')}",
-        saved: true
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    name: "' + helpers.escapeString(params.name) + '",\n';
+    script += '    category: "' + helpers.escapeString(params.category || 'Custom') + '",\n';
+    script += '    saved: true\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   applyExpressionPreset: (params: {
     compId: number;
@@ -732,51 +773,54 @@ export const expressionGenerators: ScriptGeneratorModule = {
     propertyPath: string;
     presetName: string;
     parameters?: any;
-  }) => `
-    // This would typically load from a preferences file or database
-    // For now, we'll just apply a simple expression
+  }) => {
+    let script = '';
+    script += '// This would typically load from a preferences file or database\n';
+    script += '// For now, we\'ll just apply a simple expression\n\n';
     
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Navigate property path
-    var pathParts = "${helpers.escapeString(params.propertyPath)}".split(".");
-    var prop = layer;
+    script += '// Navigate property path\n';
+    script += 'var pathParts = "' + helpers.escapeString(params.propertyPath) + '".split(".");\n';
+    script += 'var prop = layer;\n\n';
     
-    for (var i = 0; i < pathParts.length; i++) {
-      var part = pathParts[i];
-      if (part === "Transform" && prop === layer) {
-        prop = prop.property("ADBE Transform Group");
-      } else {
-        prop = prop.property(part);
-      }
-      
-      if (!prop) {
-        throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));
-      }
-    }
+    script += 'for (var i = 0; i < pathParts.length; i++) {\n';
+    script += '  var part = pathParts[i];\n';
+    script += '  if (part === "Transform" && prop === layer) {\n';
+    script += '    prop = prop.property("ADBE Transform Group");\n';
+    script += '  } else {\n';
+    script += '    prop = prop.property(part);\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (!prop) {\n';
+    script += '    throw new Error("Property not found: " + pathParts.slice(0, i + 1).join("."));\n';
+    script += '  }\n';
+    script += '}\n\n';
     
-    // Apply a default expression based on preset name
-    var presetName = "${helpers.escapeString(params.presetName)}";
-    var expression = "// " + presetName + " preset\\nvalue";
+    script += '// Apply a default expression based on preset name\n';
+    script += 'var presetName = "' + helpers.escapeString(params.presetName) + '";\n';
+    script += 'var expression = "// " + presetName + " preset\\nvalue";\n\n';
     
-    prop.expression = expression;
+    script += 'prop.expression = expression;\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        propertyPath: "${helpers.escapeString(params.propertyPath)}",
-        presetName: presetName,
-        applied: true
-      }
-    };
-  `
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    propertyPath: "' + helpers.escapeString(params.propertyPath) + '",\n';
+    script += '    presetName: presetName,\n';
+    script += '    applied: true\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  }
 };
