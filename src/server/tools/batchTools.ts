@@ -80,7 +80,7 @@ export const batchTools = [
   
   {
     name: "batch_create_layers",
-    description: "Create multiple layers at once",
+    description: "Create multiple layers at once. IMPORTANT: Layers are created in order - first item becomes Layer 1 (top), last item becomes bottom layer. Create backgrounds LAST!",
     inputSchema: {
       type: "object",
       properties: {
@@ -90,7 +90,7 @@ export const batchTools = [
         },
         layers: {
           type: "array",
-          description: "Array of layer definitions",
+          description: "Array of layer definitions. Order matters! First = top layer, Last = bottom layer. Put backgrounds at the END of array.",
           items: {
             type: "object",
             properties: {

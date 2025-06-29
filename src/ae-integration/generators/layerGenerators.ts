@@ -150,32 +150,45 @@ export const layerGenerators: ScriptGeneratorModule = {
     script += '  }\n';
     script += '}\n\n';
     
-    script += '// Set transform properties\n';
+    script += '// Set transform properties through Transform group for better compatibility\n';
+    script += 'var transform = layer.property("ADBE Transform Group");\n';
+    script += 'if (!transform) {\n';
+    script += '  throw new Error("Could not access transform group");\n';
+    script += '}\n\n';
+    
+    script += '// Set position\n';
     script += 'var position = props.position || [comp.width/2, comp.height/2];\n';
-    script += 'layer.property("Position").setValue(position);\n\n';
-    
-    script += 'if (props.scale) {\n';
-    script += '  layer.property("Scale").setValue(props.scale);\n';
+    script += 'var positionProp = transform.property("ADBE Position");\n';
+    script += 'if (positionProp) {\n';
+    script += '  positionProp.setValue(position);\n';
     script += '}\n\n';
     
-    script += 'if (props.rotation !== undefined) {\n';
-    script += '  layer.property("Rotation").setValue(props.rotation);\n';
-    script += '}\n\n';
-    
-    script += 'if (props.opacity !== undefined) {\n';
-    script += '  // Access opacity through Transform group for better compatibility\n';
-    script += '  var transform = layer.property("ADBE Transform Group");\n';
-    script += '  if (transform) {\n';
-    script += '    var opacityProp = transform.property("ADBE Opacity");\n';
-    script += '    if (opacityProp) {\n';
-    script += '      opacityProp.setValue(props.opacity);\n';
-    script += '    } else {\n';
-    script += '      // Fallback to direct access\n';
-    script += '      layer.property("Opacity").setValue(props.opacity);\n';
+    script += '// Set scale - avoid zero scale which can cause issues\n';
+    script += 'if (props.scale !== undefined) {\n';
+    script += '  var scaleProp = transform.property("ADBE Scale");\n';
+    script += '  if (scaleProp) {\n';
+    script += '    var scaleValue = props.scale;\n';
+    script += '    // Ensure scale is not exactly zero to avoid property access issues\n';
+    script += '    if (scaleValue[0] === 0 && scaleValue[1] === 0) {\n';
+    script += '      scaleValue = [0.01, 0.01];\n';
     script += '    }\n';
-    script += '  } else {\n';
-    script += '    // Fallback to direct access\n';
-    script += '    layer.property("Opacity").setValue(props.opacity);\n';
+    script += '    scaleProp.setValue(scaleValue);\n';
+    script += '  }\n';
+    script += '}\n\n';
+    
+    script += '// Set rotation\n';
+    script += 'if (props.rotation !== undefined) {\n';
+    script += '  var rotationProp = transform.property("ADBE Rotate Z");\n';
+    script += '  if (rotationProp) {\n';
+    script += '    rotationProp.setValue(props.rotation);\n';
+    script += '  }\n';
+    script += '}\n\n';
+    
+    script += '// Set opacity\n';
+    script += 'if (props.opacity !== undefined) {\n';
+    script += '  var opacityProp = transform.property("ADBE Opacity");\n';
+    script += '  if (opacityProp) {\n';
+    script += '    opacityProp.setValue(props.opacity);\n';
     script += '  }\n';
     script += '}\n\n';
     

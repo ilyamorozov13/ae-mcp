@@ -1,7 +1,7 @@
 export const layerTools = [
   {
     name: "add_solid_layer",
-    description: "Add a solid color layer to a composition",
+    description: "Add a solid color layer to a composition. Note: New layers are added on TOP (Layer 1). For backgrounds, create them last or use reorder_layers.",
     inputSchema: {
       type: "object",
       properties: {

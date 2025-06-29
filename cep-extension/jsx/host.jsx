@@ -32,12 +32,13 @@ function initializeMCPBridge() {
 /**
  * Process command files
  */
-function processCommands() {
+function processCommands(debugMode) {
     var result = {
         success: true,
         processed: 0,
         errors: 0,
-        commands: []
+        commands: [],
+        errorDetails: []
     };
     
     try {
@@ -66,6 +67,8 @@ function processCommands() {
             }
             
             try {
+                var commandStartTime = new Date().getTime();
+                
                 // Read the command file
                 file.open("r");
                 var content = file.read();
@@ -106,7 +109,19 @@ function processCommands() {
                         responseFile.close();
                         
                         result.processed++;
-                        result.commands.push(file.name);
+                        
+                        var commandEndTime = new Date().getTime();
+                        var executionTime = commandEndTime - commandStartTime;
+                        
+                        if (debugMode) {
+                            result.commands.push({
+                                file: file.name,
+                                content: content.substring(0, 500) + (content.length > 500 ? "..." : ""),
+                                executionTime: executionTime
+                            });
+                        } else {
+                            result.commands.push(file.name);
+                        }
                         
                         // Mark as processed
                         processedCommands[file.name] = true;
@@ -137,7 +152,21 @@ function processCommands() {
                     }
                     
                     result.errors++;
-                    result.commands.push("ERROR in " + file.name + ": " + execError.toString());
+                    
+                    if (debugMode) {
+                        result.errorDetails.push({
+                            file: file.name,
+                            message: execError.toString(),
+                            stack: execError.stack || "No stack trace available"
+                        });
+                        result.commands.push({
+                            file: file.name,
+                            content: content.substring(0, 500) + (content.length > 500 ? "..." : ""),
+                            error: execError.toString()
+                        });
+                    } else {
+                        result.commands.push("ERROR in " + file.name + ": " + execError.toString());
+                    }
                     
                     // Still mark as processed and archive even on error
                     processedCommands[file.name] = true;
@@ -150,7 +179,16 @@ function processCommands() {
                 
             } catch (fileError) {
                 result.errors++;
-                result.commands.push("ERROR reading " + file.name + ": " + fileError.toString());
+                
+                if (debugMode) {
+                    result.errorDetails.push({
+                        file: file.name,
+                        message: fileError.toString(),
+                        stack: fileError.stack || "No stack trace available"
+                    });
+                } else {
+                    result.commands.push("ERROR reading " + file.name + ": " + fileError.toString());
+                }
             }
         }
         

@@ -125,6 +125,12 @@ Now you can use natural language commands like:
 }
 ```
 
+### Layer Ordering - IMPORTANT!
+In After Effects, Layer 1 is on TOP. When creating backgrounds:
+- **Create backgrounds LAST** so they appear at the bottom
+- Or use `reorder_layers` to move backgrounds to the bottom
+- See [LAYER_ORDERING.md](../LAYER_ORDERING.md) for detailed guide
+
 ### Batch Modify Layer Properties
 - "Move layers 1, 2, and 3 to different positions"
 - "Scale multiple layers at once"
@@ -174,6 +180,74 @@ Now you can use natural language commands like:
 - "Set a position keyframe at 0 seconds"
 - "Move to 2 seconds and set position to 1500, 540"
 - "Create a fade in animation from 0 to 1 second"
+
+### Complete Example: Title Card with Background (Correct Order)
+
+```javascript
+// Create a professional title card with proper layer ordering
+{
+  "tool": "batch_execute",
+  "params": {
+    "commands": [
+      // 1. Create foreground elements FIRST
+      {
+        "tool": "add_text_layer_advanced",
+        "params": {
+          "compId": 1,
+          "text": "AWESOME PROJECT",
+          "name": "Main Title",
+          "position": [960, 400],
+          "sourceText": {
+            "fontSize": 80,
+            "font": "Arial",
+            "fillColor": [1, 1, 1],
+            "justification": "center"
+          }
+        }
+      },
+      {
+        "tool": "add_text_layer_advanced",
+        "params": {
+          "compId": 1,
+          "text": "Created with AE-MCP",
+          "name": "Subtitle",
+          "position": [960, 500],
+          "sourceText": {
+            "fontSize": 30,
+            "font": "Arial",
+            "fillColor": [0.8, 0.8, 0.8],
+            "justification": "center"
+          }
+        }
+      },
+      {
+        "tool": "add_shape_layer",
+        "params": {
+          "compId": 1,
+          "name": "Divider Line",
+          "shapeType": "rectangle",
+          "properties": {
+            "size": [300, 2],
+            "fillColor": [1, 0.8, 0],
+            "position": [960, 450]
+          }
+        }
+      },
+      // 2. Create background LAST - it will be at the bottom!
+      {
+        "tool": "add_solid_layer",
+        "params": {
+          "compId": 1,
+          "name": "Background",
+          "color": [0.1, 0.1, 0.2],
+          "width": 1920,
+          "height": 1080
+        }
+      }
+    ]
+  }
+}
+```
 
 ### Rendering
 - "Add the current composition to the render queue"

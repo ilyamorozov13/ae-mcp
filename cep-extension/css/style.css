@@ -220,6 +220,13 @@ h1 {
     color: #2196F3;
 }
 
+.log-entry.debug .log-message {
+    color: #888888;
+    font-size: 10px;
+    margin-left: 16px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 8px;

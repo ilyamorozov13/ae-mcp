@@ -10,6 +10,7 @@
     
     // State variables
     var autoProcess = true;
+    var debugMode = localStorage.getItem('mcpDebugMode') === 'true';
     var processInterval = null;
     var stats = {
         processed: 0,
@@ -35,6 +36,12 @@
         startAutoProcessing();
         initializeExtendScript();
         updateUI();
+        
+        // Initialize debug mode button state
+        if (debugMode) {
+            elements.btnToggleDebug.textContent = 'Debug Mode: ON';
+            elements.btnToggleDebug.classList.add('active');
+        }
     });
     
     /**
@@ -48,6 +55,7 @@
             btnClearLog: document.getElementById('btnClearLog'),
             btnOpenFolder: document.getElementById('btnOpenFolder'),
             btnToggleAuto: document.getElementById('btnToggleAuto'),
+            btnToggleDebug: document.getElementById('btnToggleDebug'),
             statProcessed: document.getElementById('statProcessed'),
             statErrors: document.getElementById('statErrors'),
             statLastCheck: document.getElementById('statLastCheck'),
@@ -64,6 +72,7 @@
         elements.btnClearLog.addEventListener('click', clearLog);
         elements.btnOpenFolder.addEventListener('click', openCommandsFolder);
         elements.btnToggleAuto.addEventListener('click', toggleAutoProcess);
+        elements.btnToggleDebug.addEventListener('click', toggleDebugMode);
     }
     
     /**
@@ -83,21 +92,39 @@
      * Process commands manually
      */
     function processCommands() {
-        csInterface.evalScript('processCommands()', function(result) {
+        var startTime = Date.now();
+        csInterface.evalScript('processCommands(' + debugMode + ')', function(result) {
             try {
                 var response = JSON.parse(result);
                 
                 if (response.success) {
                     // Only update status if we actually processed something
                     if (response.processed > 0) {
+                        var elapsedTime = Date.now() - startTime;
                         setStatus('processing', 'Processing...');
                         stats.processed += response.processed;
-                        addLogEntry('Processed ' + response.processed + ' command(s)', 'success');
+                        
+                        if (debugMode) {
+                            addLogEntry('Processed ' + response.processed + ' command(s) in ' + elapsedTime + 'ms', 'success');
+                        } else {
+                            addLogEntry('Processed ' + response.processed + ' command(s)', 'success');
+                        }
                         
                         // Log each processed command
                         if (response.commands) {
                             response.commands.forEach(function(cmd) {
-                                addLogEntry('  → ' + cmd, 'info');
+                                if (typeof cmd === 'object' && debugMode) {
+                                    // In debug mode, show detailed command info
+                                    addLogEntry('  → Command: ' + cmd.file, 'info');
+                                    if (cmd.content) {
+                                        addLogEntry('    JSON: ' + cmd.content, 'debug');
+                                    }
+                                    if (cmd.executionTime) {
+                                        addLogEntry('    Execution time: ' + cmd.executionTime + 'ms', 'debug');
+                                    }
+                                } else {
+                                    addLogEntry('  → ' + cmd, 'info');
+                                }
                             });
                         }
                         
@@ -111,6 +138,17 @@
                         stats.errors += response.errors;
                         var errorMsg = 'Encountered ' + response.errors + ' error(s)';
                         addLogEntry(errorMsg, 'error');
+                        
+                        // In debug mode, show detailed error information
+                        if (debugMode && response.errorDetails) {
+                            response.errorDetails.forEach(function(error) {
+                                addLogEntry('  → Error in ' + error.file + ': ' + error.message, 'error');
+                                if (error.stack) {
+                                    addLogEntry('    Stack: ' + error.stack, 'debug');
+                                }
+                            });
+                        }
+                        
                         addRecentError(errorMsg);
                         setStatus('error', 'Error: ' + errorMsg);
                         
@@ -193,6 +231,24 @@
             elements.btnToggleAuto.classList.remove('active');
             stopAutoProcessing();
             addLogEntry('Auto-processing disabled', 'info');
+        }
+    }
+    
+    /**
+     * Toggle debug mode
+     */
+    function toggleDebugMode() {
+        debugMode = !debugMode;
+        localStorage.setItem('mcpDebugMode', debugMode);
+        
+        if (debugMode) {
+            elements.btnToggleDebug.textContent = 'Debug Mode: ON';
+            elements.btnToggleDebug.classList.add('active');
+            addLogEntry('Debug mode enabled - showing detailed command information', 'info');
+        } else {
+            elements.btnToggleDebug.textContent = 'Debug Mode: OFF';
+            elements.btnToggleDebug.classList.remove('active');
+            addLogEntry('Debug mode disabled', 'info');
         }
     }
     
