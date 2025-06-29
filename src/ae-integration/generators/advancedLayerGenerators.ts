@@ -584,7 +584,7 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     script += '  try {\n';
     script += '    timeRemap.setValueAtTime(keyframes[i].time, keyframes[i].value);\n';
     script += '  } catch (e) {\n';
-    script += '    throw new Error("Failed to set keyframe at time " + keyframes[i].time + ": " + e.toString());\n';
+    script += '    throw new Error("Failed to set keyframe at time " + keyframes[i].time + ": " + String(e));\n';
     script += '  }\n';
     script += '}\n\n';
     

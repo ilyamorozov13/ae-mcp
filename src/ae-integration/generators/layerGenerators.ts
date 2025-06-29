@@ -163,7 +163,20 @@ export const layerGenerators: ScriptGeneratorModule = {
     script += '}\n\n';
     
     script += 'if (props.opacity !== undefined) {\n';
-    script += '  layer.property("Opacity").setValue(props.opacity);\n';
+    script += '  // Access opacity through Transform group for better compatibility\n';
+    script += '  var transform = layer.property("ADBE Transform Group");\n';
+    script += '  if (transform) {\n';
+    script += '    var opacityProp = transform.property("ADBE Opacity");\n';
+    script += '    if (opacityProp) {\n';
+    script += '      opacityProp.setValue(props.opacity);\n';
+    script += '    } else {\n';
+    script += '      // Fallback to direct access\n';
+    script += '      layer.property("Opacity").setValue(props.opacity);\n';
+    script += '    }\n';
+    script += '  } else {\n';
+    script += '    // Fallback to direct access\n';
+    script += '    layer.property("Opacity").setValue(props.opacity);\n';
+    script += '  }\n';
     script += '}\n\n';
     
     script += 'return {\n';

@@ -50,7 +50,7 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '    }\n';
     script += '  }\n';
     script += '} catch (e) {\n';
-    script += '  throw new Error("Error adding effect \\\\"" + effectName + "\\\\": " + e.toString());\n';
+    script += '  throw new Error("Error adding effect \\\\"" + effectName + "\\\\": " + String(e));\n';
     script += '}\n\n';
     
     script += 'if (!effect) {\n';
@@ -205,7 +205,7 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '  \n';
     script += '  prop.setValueAtTime(numTime, value);\n';
     script += '} catch (e) {\n';
-    script += '  throw new Error("Failed to set keyframe at time " + time + " with value " + value + ": " + e.toString());\n';
+    script += '  throw new Error("Failed to set keyframe at time " + time + " with value " + value + ": " + String(e));\n';
     script += '}\n\n';
     
     script += 'var result = {};\n';
@@ -275,7 +275,7 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '    results.push({success: true, layer: kf.layerIndex, property: propName, time: kf.time});\n';
     script += '    \n';
     script += '  } catch (e) {\n';
-    script += '    results.push({success: false, error: e.toString(), layer: kf.layerIndex});\n';
+    script += '    results.push({success: false, error: String(e), layer: kf.layerIndex});\n';
     script += '  }\n';
     script += '}\n\n';
     
