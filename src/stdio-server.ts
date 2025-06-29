@@ -33,17 +33,27 @@ class StdioMCPServer {
   private rl: readline.Interface;
   private initialized = false;
   private useFileBridge: boolean;
+  private clientPrefix: string | undefined;
 
   constructor() {
     // Check if we should use file-based communication
     this.useFileBridge = process.env.AE_USE_FILE_BRIDGE === 'true';
     
+    // Use environment variable for client prefix if provided, otherwise generate default
+    const envPrefix = process.env.MCP_CLIENT_PREFIX;
+    const defaultPrefix = envPrefix || `temp_${process.pid}_${Date.now().toString(36)}`;
+    
     if (this.useFileBridge) {
       logger.info('Using file-based communication bridge');
-      this.communicator = new AEFileCommunicator(logger);
+      this.communicator = new AEFileCommunicator(logger, defaultPrefix);
     } else {
       logger.info('Using socket-based communication');
-      this.communicator = new AECommunicator(logger);
+      this.communicator = new AECommunicator(logger, defaultPrefix);
+    }
+    
+    if (envPrefix) {
+      logger.info(`Using client prefix from environment: ${envPrefix}`);
+      this.clientPrefix = envPrefix;
     }
     
     this.tools = new Map();
@@ -168,7 +178,26 @@ class StdioMCPServer {
   }
 
   private async handleInitialize(params: any) {
-    logger.info('Initializing MCP server...');
+    logger.info('Initializing MCP server...', params);
+    
+    // Extract client info to create unique prefix
+    if (params?.clientInfo) {
+      const { name, version } = params.clientInfo;
+      // Create a more meaningful prefix based on client info
+      this.clientPrefix = `${name || 'unknown'}_${version || '0'}_${process.pid}_${Date.now().toString(36)}`
+        .replace(/[^a-zA-Z0-9_-]/g, '_'); // Sanitize for filesystem
+      
+      // Recreate communicator with proper client prefix
+      if (this.useFileBridge) {
+        await this.communicator.disconnect();
+        this.communicator = new AEFileCommunicator(logger, this.clientPrefix);
+      } else {
+        await this.communicator.disconnect();
+        this.communicator = new AECommunicator(logger, this.clientPrefix);
+      }
+      
+      logger.info(`Initialized with client prefix: ${this.clientPrefix}`);
+    }
     
     return {
       protocolVersion: '2024-11-05',
@@ -331,43 +360,91 @@ class StdioMCPServer {
       throw new Error("Commands must be a non-empty array");
     }
     
+    // Validate all commands before execution
+    const validationErrors: string[] = [];
+    commands.forEach((cmd, index) => {
+      if (!cmd.tool) {
+        validationErrors.push(`Command ${index}: Missing 'tool' field`);
+      }
+      if (!cmd.params) {
+        validationErrors.push(`Command ${index}: Missing 'params' field`);
+      }
+    });
+    
+    if (validationErrors.length > 0) {
+      throw new Error(`Batch validation failed:\n${validationErrors.join('\n')}`);
+    }
+    
     logger.info(`Executing batch of ${commands.length} commands (${sequential ? 'sequential' : 'parallel'})`);
     
     const results: any[] = [];
     
     if (sequential) {
       // Execute commands one by one
-      for (const cmd of commands) {
+      for (let i = 0; i < commands.length; i++) {
+        const cmd = commands[i];
+        const startTime = Date.now();
         try {
+          logger.debug(`Executing command ${i + 1}/${commands.length}: ${cmd.tool}`);
           const result = await this.communicator.executeCommand(cmd.tool, cmd.params);
+          const duration = Date.now() - startTime;
           results.push({
-            id: cmd.id || cmd.tool,
+            id: cmd.id || `${cmd.tool}_${i}`,
+            tool: cmd.tool,
             success: true,
-            result
+            result,
+            duration,
+            index: i
           });
         } catch (error: any) {
+          const duration = Date.now() - startTime;
+          logger.error(`Command ${cmd.tool} failed:`, error);
           results.push({
-            id: cmd.id || cmd.tool,
+            id: cmd.id || `${cmd.tool}_${i}`,
+            tool: cmd.tool,
             success: false,
-            error: error.message || error.toString()
+            error: {
+              message: error.message || error.toString(),
+              code: error.code,
+              details: error.details
+            },
+            duration,
+            index: i,
+            params: cmd.params // Include params for debugging
           });
         }
       }
     } else {
       // Execute commands in parallel
-      const promises = commands.map(async (cmd) => {
+      const promises = commands.map(async (cmd, index) => {
+        const startTime = Date.now();
         try {
+          logger.debug(`Executing parallel command: ${cmd.tool}`);
           const result = await this.communicator.executeCommand(cmd.tool, cmd.params);
+          const duration = Date.now() - startTime;
           return {
-            id: cmd.id || cmd.tool,
+            id: cmd.id || `${cmd.tool}_${index}`,
+            tool: cmd.tool,
             success: true,
-            result
+            result,
+            duration,
+            index
           };
         } catch (error: any) {
+          const duration = Date.now() - startTime;
+          logger.error(`Command ${cmd.tool} failed:`, error);
           return {
-            id: cmd.id || cmd.tool,
+            id: cmd.id || `${cmd.tool}_${index}`,
+            tool: cmd.tool,
             success: false,
-            error: error.message || error.toString()
+            error: {
+              message: error.message || error.toString(),
+              code: error.code,
+              details: error.details
+            },
+            duration,
+            index,
+            params: cmd.params // Include params for debugging
           };
         }
       });
@@ -376,14 +453,29 @@ class StdioMCPServer {
       results.push(...parallelResults);
     }
     
+    // Calculate statistics
+    const stats = {
+      total: commands.length,
+      successful: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      totalDuration: results.reduce((sum, r) => sum + (r.duration || 0), 0),
+      averageDuration: results.length > 0 ? 
+        results.reduce((sum, r) => sum + (r.duration || 0), 0) / results.length : 0
+    };
+    
+    // Log summary
+    logger.info(`Batch execution complete: ${stats.successful}/${stats.total} successful`);
+    if (stats.failed > 0) {
+      logger.warn(`${stats.failed} commands failed`);
+    }
+    
     return {
       content: [
         {
           type: 'text',
           text: JSON.stringify({
-            total: commands.length,
-            successful: results.filter(r => r.success).length,
-            failed: results.filter(r => !r.success).length,
+            ...stats,
+            executionMode: sequential ? 'sequential' : 'parallel',
             results
           }, null, 2)
         }

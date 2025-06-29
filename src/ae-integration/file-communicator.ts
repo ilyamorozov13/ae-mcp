@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import { Logger } from 'winston';
 import { ScriptGenerator } from './scriptGenerator.js';
-import { AEError } from './errorHandler.js';
+import { AEError, AEErrorHandler } from './errorHandler.js';
 
 interface PendingCommand {
   resolve: (value: any) => void;
@@ -21,16 +21,20 @@ export class AEFileCommunicator {
   private checkInterval: NodeJS.Timeout | null = null;
   private isConnected = false;
   private isFirstCommand = true;
+  private clientPrefix: string;
   
-  constructor(logger: Logger) {
+  constructor(logger: Logger, clientPrefix?: string) {
     this.logger = logger;
     this.scriptGenerator = new ScriptGenerator();
+    
+    // Generate unique client prefix if not provided
+    this.clientPrefix = clientPrefix || `client_${process.pid}_${Date.now().toString(36)}`;
     
     // Use Documents folder for better write permissions
     const homeDir = os.homedir();
     this.commandsDir = path.join(homeDir, 'Documents', 'ae-mcp-commands');
     
-    this.logger.info('Using Documents folder for file-based communication');
+    this.logger.info(`Using Documents folder for file-based communication with prefix: ${this.clientPrefix}`);
     
     // Ensure commands directory exists
     if (!fs.existsSync(this.commandsDir)) {
@@ -56,6 +60,9 @@ export class AEFileCommunicator {
       this.logger.warn('Please ensure the AE MCP Bridge panel is open in After Effects with Auto Process enabled');
     }
     
+    // Clean up old files from this client on startup
+    this.cleanupOldClientFiles();
+    
     // Start checking for responses
     this.startResponseChecker();
     this.isConnected = true;
@@ -70,10 +77,36 @@ export class AEFileCommunicator {
     }, 100); // Check every 100ms
   }
   
+  private cleanupOldClientFiles() {
+    try {
+      const files = fs.readdirSync(this.commandsDir);
+      const clientFiles = files.filter(f => f.startsWith(this.clientPrefix));
+      
+      for (const file of clientFiles) {
+        const filePath = path.join(this.commandsDir, file);
+        try {
+          fs.unlinkSync(filePath);
+          this.logger.debug(`Cleaned up old client file: ${file}`);
+        } catch (err) {
+          this.logger.debug(`Failed to clean up file ${file}: ${err}`);
+        }
+      }
+      
+      if (clientFiles.length > 0) {
+        this.logger.info(`Cleaned up ${clientFiles.length} old files from this client`);
+      }
+    } catch (err) {
+      this.logger.debug(`Failed to cleanup old files: ${err}`);
+    }
+  }
+  
   private async checkForResponses() {
     try {
       const files = fs.readdirSync(this.commandsDir);
-      const responseFiles = files.filter(f => f.endsWith('.json.response'));
+      // Only look for response files that belong to this client
+      const responseFiles = files.filter(f => 
+        f.startsWith(this.clientPrefix) && f.endsWith('.json.response')
+      );
       
       for (const file of responseFiles) {
         const filePath = path.join(this.commandsDir, file);
@@ -198,13 +231,33 @@ export class AEFileCommunicator {
       await this.connect();
     }
     
-    const script = this.scriptGenerator.generate(command, params);
-    return this.sendScript(script, command);
+    // Validate parameters before execution
+    const validation = AEErrorHandler.validateParams(command, params);
+    if (!validation.valid) {
+      throw new AEError(
+        `Invalid parameters for ${command}: ${validation.errors.join(', ')}`,
+        'INVALID_PARAMS',
+        { errors: validation.errors },
+        { command, params }
+      );
+    }
+    
+    try {
+      const script = this.scriptGenerator.generate(command, params);
+      return await this.sendScript(script, command);
+    } catch (error: any) {
+      // Enhanced error with context
+      throw AEErrorHandler.formatError(error, {
+        command,
+        params,
+        scriptSnippet: error.script
+      });
+    }
   }
   
   private async sendScript(script: string, command: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      const id = `${command}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const id = `${this.clientPrefix}_${command}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const commandFile = path.join(this.commandsDir, `${id}.json`);
       const responseFile = `${commandFile}.response`;
       
@@ -285,5 +338,9 @@ export class AEFileCommunicator {
     this.pendingCommands.clear();
     
     this.isConnected = false;
+  }
+  
+  getClientPrefix(): string {
+    return this.clientPrefix;
   }
 }

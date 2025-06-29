@@ -1,7 +1,7 @@
 import net from 'net';
 import { Logger } from 'winston';
 import { ScriptGenerator } from './scriptGenerator.js';
-import { AEError } from './errorHandler.js';
+import { AEError, AEErrorHandler } from './errorHandler.js';
 
 interface PendingCommand {
   resolve: (value: any) => void;
@@ -16,10 +16,15 @@ export class AECommunicator {
   private scriptGenerator: ScriptGenerator;
   private pendingCommands: Map<string, PendingCommand> = new Map();
   private buffer = '';
+  private clientPrefix: string;
   
-  constructor(logger: Logger) {
+  constructor(logger: Logger, clientPrefix?: string) {
     this.logger = logger;
     this.scriptGenerator = new ScriptGenerator();
+    
+    // Generate unique client prefix if not provided
+    this.clientPrefix = clientPrefix || `client_${process.pid}_${Date.now().toString(36)}`;
+    this.logger.info(`Socket communicator initialized with prefix: ${this.clientPrefix}`);
   }
   
   async connect(port: number = 8080, host: string = 'localhost'): Promise<void> {
@@ -74,6 +79,13 @@ export class AECommunicator {
   
   private handleMessage(message: any) {
     const { id, result, error } = message;
+    
+    // Only process messages for this client
+    if (!id || !id.startsWith(this.clientPrefix)) {
+      this.logger.debug(`Ignoring message for different client: ${id}`);
+      return;
+    }
+    
     const pending = this.pendingCommands.get(id);
     
     if (!pending) {
@@ -96,13 +108,33 @@ export class AECommunicator {
       await this.connect();
     }
     
-    const script = this.scriptGenerator.generate(command, params);
-    return this.sendScript(script, command);
+    // Validate parameters before execution
+    const validation = AEErrorHandler.validateParams(command, params);
+    if (!validation.valid) {
+      throw new AEError(
+        `Invalid parameters for ${command}: ${validation.errors.join(', ')}`,
+        'INVALID_PARAMS',
+        { errors: validation.errors },
+        { command, params }
+      );
+    }
+    
+    try {
+      const script = this.scriptGenerator.generate(command, params);
+      return await this.sendScript(script, command);
+    } catch (error: any) {
+      // Enhanced error with context
+      throw AEErrorHandler.formatError(error, {
+        command,
+        params,
+        scriptSnippet: error.script
+      });
+    }
   }
   
   private async sendScript(script: string, command: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      const id = `${command}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const id = `${this.clientPrefix}_${command}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const timeout = setTimeout(() => {
         this.pendingCommands.delete(id);
@@ -145,5 +177,9 @@ export class AECommunicator {
         });
       });
     }
+  }
+  
+  getClientPrefix(): string {
+    return this.clientPrefix;
   }
 }
