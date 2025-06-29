@@ -16,6 +16,7 @@ export const batchGenerators: ScriptGeneratorModule = {
     script += '}\n\n';
     
     script += 'var results = [];\n';
+    script += 'var createdLayers = [];\n';
     script += 'var layers = ' + JSON.stringify(params.layers) + ';\n\n';
     
     script += 'for (var i = 0; i < layers.length; i++) {\n';
@@ -148,11 +149,12 @@ export const batchGenerators: ScriptGeneratorModule = {
     script += '      }\n';
     script += '    }\n';
     script += '    \n';
-    script += '    results.push({\n';
-    script += '      success: true,\n';
-    script += '      index: layer.index,\n';
-    script += '      name: layer.name,\n';
-    script += '      type: type\n';
+    script += '    // Store the layer reference and original index for later\n';
+    script += '    createdLayers.push({\n';
+    script += '      layer: layer,\n';
+    script += '      originalIndex: i,\n';
+    script += '      type: type,\n';
+    script += '      name: layer.name\n';
     script += '    });\n';
     script += '    \n';
     script += '  } catch (e) {\n';
@@ -165,17 +167,32 @@ export const batchGenerators: ScriptGeneratorModule = {
     script += '  }\n';
     script += '}\n\n';
     
-    script += 'var successCount = 0;\n';
-    script += 'for (var i = 0; i < results.length; i++) {\n';
-    script += '  if (results[i].success) successCount++;\n';
+    script += '// After all layers are created, get their final indices\n';
+    script += '// Since layers are added at the top, the last created layer will be at index 1\n';
+    script += '// and the first created layer will be at the bottom\n';
+    script += 'for (var i = 0; i < createdLayers.length; i++) {\n';
+    script += '  var layerInfo = createdLayers[i];\n';
+    script += '  // Calculate the correct index: layers created later have lower indices\n';
+    script += '  var expectedIndex = createdLayers.length - i;\n';
+    script += '  \n';
+    script += '  results.push({\n';
+    script += '    success: true,\n';
+    script += '    index: expectedIndex,\n';
+    script += '    name: layerInfo.name,\n';
+    script += '    type: layerInfo.type,\n';
+    script += '    originalOrder: layerInfo.originalIndex\n';
+    script += '  });\n';
     script += '}\n\n';
+    
+    script += 'var successCount = createdLayers.length;\n';
     
     script += 'return {\n';
     script += '  success: true,\n';
     script += '  data: {\n';
     script += '    total: layers.length,\n';
     script += '    successful: successCount,\n';
-    script += '    results: results\n';
+    script += '    results: results,\n';
+    script += '    layerOrder: "First in array = bottom layer (highest index), Last in array = top layer (index 1)"\n';
     script += '  }\n';
     script += '};';
     
