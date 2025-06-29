@@ -8,50 +8,59 @@ export const layerGenerators: ScriptGeneratorModule = {
     color?: number[];
     width?: number;
     height?: number;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layers.addSolid(
-      [${params.color ? params.color.join(',') : '1,1,1'}],
-      "${helpers.escapeString(params.name ? params.name : 'Solid')}",
-      ${params.width ? params.width : 'comp.width'},
-      ${params.height ? params.height : 'comp.height'},
-      1.0
-    );
+    script += 'var layer = comp.layers.addSolid(\n';
+    script += '  [' + (params.color ? params.color.join(',') : '1,1,1') + '],\n';
+    script += '  "' + helpers.escapeString(params.name ? params.name : 'Solid') + '",\n';
+    script += '  ' + (params.width ? params.width : 'comp.width') + ',\n';
+    script += '  ' + (params.height ? params.height : 'comp.height') + ',\n';
+    script += '  1.0\n';
+    script += ');\n\n';
     
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
   
   addTextLayer: (params: {
     compId: number;
     text: string;
     name?: string;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layers.addText("' + helpers.escapeString(params.text) + '");\n';
+    if (params.name) {
+      script += 'layer.name = "' + helpers.escapeString(params.name) + '";\n';
     }
+    script += '\n';
     
-    var layer = comp.layers.addText("${helpers.escapeString(params.text)}");
-    " + (params.name ? 'layer.name = "' + helpers.escapeString(params.name) + '";' : '') + "
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name\n';
+    script += '  }\n';
+    script += '};';
     
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name
-      }
-    };
-  `,
+    return script;
+  },
   
   addShapeLayer: (params: {
     compId: number;
@@ -162,24 +171,32 @@ export const layerGenerators: ScriptGeneratorModule = {
     };
   `,
   
-  addNullLayer: (params: { compId: number; name?: string; is3D?: boolean }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  addNullLayer: (params: { compId: number; name?: string; is3D?: boolean }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layers.addNull();\n';
+    if (params.name) {
+      script += 'layer.name = "' + helpers.escapeString(params.name) + '";\n';
     }
+    if (params.is3D) {
+      script += 'layer.threeDLayer = true;\n';
+    }
+    script += '\n';
     
-    var layer = comp.layers.addNull();
-    " + (params.name ? 'layer.name = "' + helpers.escapeString(params.name) + '";' : '') + "
-    " + (params.is3D ? 'layer.threeDLayer = true;' : '') + "
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name\n';
+    script += '  }\n';
+    script += '};';
     
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name
-      }
-    };
-  `,
+    return script;
+  },
   
   addAdjustmentLayer: (params: { compId: number; name?: string }) => `
     var comp = app.project.itemByID(${params.compId});

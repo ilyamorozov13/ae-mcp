@@ -2,34 +2,39 @@ import { ScriptGeneratorModule } from './types.js';
 import { helpers } from './helpers.js';
 
 export const advancedLayerGenerators: ScriptGeneratorModule = {
-  addCameraLayer: (params: { compId: number; name?: string; preset?: string; focalLength?: number }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  addCameraLayer: (params: { compId: number; name?: string; preset?: string; focalLength?: number }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var camera = comp.layers.addCamera("' + helpers.escapeString(params.name || 'Camera') + '", [comp.width/2, comp.height/2]);\n\n';
+    
+    script += '// Apply preset\n';
+    script += 'var preset = "' + (params.preset || '50mm') + '";\n';
+    script += 'if (preset !== "Custom") {\n';
+    script += '  // Extract focal length from preset string\n';
+    script += '  var focalLength = parseInt(preset);\n';
+    script += '  if (!isNaN(focalLength)) {\n';
+    script += '    camera.property("Camera Options").property("Zoom").setValue(focalLength);\n';
+    script += '  }\n';
+    if (params.focalLength) {
+      script += '} else {\n';
+      script += '  camera.property("Camera Options").property("Zoom").setValue(' + params.focalLength + ');\n';
     }
+    script += '}\n\n';
     
-    var camera = comp.layers.addCamera("${helpers.escapeString(params.name || 'Camera')}", [comp.width/2, comp.height/2]);
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: camera.index,\n';
+    script += '    name: camera.name\n';
+    script += '  }\n';
+    script += '};';
     
-    // Apply preset
-    var preset = "${params.preset || '50mm'}";
-    if (preset !== "Custom") {
-      // Extract focal length from preset string
-      var focalLength = parseInt(preset);
-      if (!isNaN(focalLength)) {
-        camera.property("Camera Options").property("Zoom").setValue(focalLength);
-      }
-    } else if (${params.focalLength}) {
-      camera.property("Camera Options").property("Zoom").setValue(${params.focalLength});
-    }
-    
-    return {
-      success: true,
-      data: {
-        index: camera.index,
-        name: camera.name
-      }
-    };
-  `,
+    return script;
+  },
   
   addLightLayer: (params: { 
     compId: number; 
@@ -37,163 +42,168 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     lightType?: string; 
     color?: number[]; 
     intensity?: number 
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var lightName = "' + helpers.escapeString(params.name || 'Light') + '";\n';
+    script += 'var light = comp.layers.addLight(lightName, [comp.width/2, comp.height/2]);\n\n';
+    
+    script += '// Set light type\n';
+    script += 'var lightTypeMap = {\n';
+    script += '  "parallel": 1,\n';
+    script += '  "spot": 2,\n';
+    script += '  "point": 3,\n';
+    script += '  "ambient": 4\n';
+    script += '};\n';
+    script += 'var lightType = lightTypeMap["' + (params.lightType || 'point') + '"] || 3;\n';
+    script += 'light.property("Light Options").property("Light Type").setValue(lightType);\n\n';
+    
+    if (params.color) {
+      script += '// Set color\n';
+      script += 'light.property("Light Options").property("Color").setValue([' + params.color.join(',') + ']);\n\n';
     }
     
-    var lightName = "${helpers.escapeString(params.name || 'Light')}";
-    var light = comp.layers.addLight(lightName, [comp.width/2, comp.height/2]);
-    
-    // Set light type
-    var lightTypeMap = {
-      "parallel": 1,
-      "spot": 2,
-      "point": 3,
-      "ambient": 4
-    };
-    var lightType = lightTypeMap["${params.lightType || 'point'}"] || 3;
-    light.property("Light Options").property("Light Type").setValue(lightType);
-    
-    // Set color
-    ` + (params.color ? `light.property("Light Options").property("Color").setValue([${params.color.join(',')}]);` : '') + `
-    
-    // Set intensity
-    ` + (params.intensity ? `light.property("Light Options").property("Intensity").setValue(${params.intensity});` : '') + `
-    
-    return {
-      success: true,
-      data: {
-        index: light.index,
-        name: light.name
-      }
-    };
-  `,
-  
-  setLayerParent: (params: { compId: number; childLayerIndex: number; parentLayerIndex?: number }) => {
-    // ES3-compatible script generation
-    let script = `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+    if (params.intensity) {
+      script += '// Set intensity\n';
+      script += 'light.property("Light Options").property("Intensity").setValue(' + params.intensity + ');\n\n';
     }
     
-    var childLayer = comp.layer(${params.childLayerIndex});
-    if (!childLayer) {
-      throw new Error("Child layer not found");
-    }
-    `;
-    
-    if (params.parentLayerIndex != null) {
-      script += `
-      var parentLayer = comp.layer(${params.parentLayerIndex});
-      if (!parentLayer) {
-        throw new Error("Parent layer not found");
-      }
-      childLayer.parent = parentLayer;
-      `;
-    } else {
-      script += `
-      childLayer.parent = null;
-      `;
-    }
-    
-    script += `
-    return {
-      success: true,
-      data: {
-        childIndex: childLayer.index,
-        childName: childLayer.name,
-        parentIndex: ${params.parentLayerIndex != null ? params.parentLayerIndex : 'null'}
-      }
-    };
-    `;
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: light.index,\n';
+    script += '    name: light.name\n';
+    script += '  }\n';
+    script += '};';
     
     return script;
   },
   
-  setLayerBlendMode: (params: { compId: number; layerIndex: number; blendMode: string }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  setLayerParent: (params: { compId: number; childLayerIndex: number; parentLayerIndex?: number }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var childLayer = comp.layer(' + params.childLayerIndex + ');\n';
+    script += 'if (!childLayer) {\n';
+    script += '  throw new Error("Child layer not found");\n';
+    script += '}\n\n';
+    
+    if (params.parentLayerIndex != null) {
+      script += 'var parentLayer = comp.layer(' + params.parentLayerIndex + ');\n';
+      script += 'if (!parentLayer) {\n';
+      script += '  throw new Error("Parent layer not found");\n';
+      script += '}\n';
+      script += 'childLayer.parent = parentLayer;\n\n';
+    } else {
+      script += 'childLayer.parent = null;\n\n';
     }
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    childIndex: childLayer.index,\n';
+    script += '    childName: childLayer.name,\n';
+    script += '    parentIndex: ' + (params.parentLayerIndex != null ? params.parentLayerIndex : 'null') + '\n';
+    script += '  }\n';
+    script += '};';
     
-    var blendModeMap = {
-      "normal": BlendingMode.NORMAL,
-      "dissolve": BlendingMode.DISSOLVE,
-      "darken": BlendingMode.DARKEN,
-      "multiply": BlendingMode.MULTIPLY,
-      "colorBurn": BlendingMode.COLOR_BURN,
-      "linearBurn": BlendingMode.LINEAR_BURN,
-      "darkerColor": BlendingMode.DARKER_COLOR,
-      "add": BlendingMode.ADD,
-      "lighten": BlendingMode.LIGHTEN,
-      "screen": BlendingMode.SCREEN,
-      "colorDodge": BlendingMode.COLOR_DODGE,
-      "linearDodge": BlendingMode.LINEAR_DODGE,
-      "lighterColor": BlendingMode.LIGHTER_COLOR,
-      "overlay": BlendingMode.OVERLAY,
-      "softLight": BlendingMode.SOFT_LIGHT,
-      "hardLight": BlendingMode.HARD_LIGHT,
-      "linearLight": BlendingMode.LINEAR_LIGHT,
-      "vividLight": BlendingMode.VIVID_LIGHT,
-      "pinLight": BlendingMode.PIN_LIGHT,
-      "hardMix": BlendingMode.HARD_MIX,
-      "difference": BlendingMode.DIFFERENCE,
-      "exclusion": BlendingMode.EXCLUSION,
-      "subtract": BlendingMode.SUBTRACT,
-      "divide": BlendingMode.DIVIDE,
-      "hue": BlendingMode.HUE,
-      "saturation": BlendingMode.SATURATION,
-      "color": BlendingMode.COLOR,
-      "luminosity": BlendingMode.LUMINOSITY
-    };
-    
-    var mode = blendModeMap["${params.blendMode}"];
-    if (!mode) {
-      throw new Error("Invalid blend mode: ${params.blendMode}");
-    }
-    
-    layer.blendingMode = mode;
-    
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name,
-        blendMode: "${params.blendMode}"
-      }
-    };
-  `,
+    return script;
+  },
   
-  setLayer3d: (params: { compId: number; layerIndex: number; is3D: boolean }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  setLayerBlendMode: (params: { compId: number; layerIndex: number; blendMode: string }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    layer.threeDLayer = ${params.is3D};
+    script += 'var blendModeMap = {\n';
+    script += '  "normal": BlendingMode.NORMAL,\n';
+    script += '  "dissolve": BlendingMode.DISSOLVE,\n';
+    script += '  "darken": BlendingMode.DARKEN,\n';
+    script += '  "multiply": BlendingMode.MULTIPLY,\n';
+    script += '  "colorBurn": BlendingMode.COLOR_BURN,\n';
+    script += '  "linearBurn": BlendingMode.LINEAR_BURN,\n';
+    script += '  "darkerColor": BlendingMode.DARKER_COLOR,\n';
+    script += '  "add": BlendingMode.ADD,\n';
+    script += '  "lighten": BlendingMode.LIGHTEN,\n';
+    script += '  "screen": BlendingMode.SCREEN,\n';
+    script += '  "colorDodge": BlendingMode.COLOR_DODGE,\n';
+    script += '  "linearDodge": BlendingMode.LINEAR_DODGE,\n';
+    script += '  "lighterColor": BlendingMode.LIGHTER_COLOR,\n';
+    script += '  "overlay": BlendingMode.OVERLAY,\n';
+    script += '  "softLight": BlendingMode.SOFT_LIGHT,\n';
+    script += '  "hardLight": BlendingMode.HARD_LIGHT,\n';
+    script += '  "linearLight": BlendingMode.LINEAR_LIGHT,\n';
+    script += '  "vividLight": BlendingMode.VIVID_LIGHT,\n';
+    script += '  "pinLight": BlendingMode.PIN_LIGHT,\n';
+    script += '  "hardMix": BlendingMode.HARD_MIX,\n';
+    script += '  "difference": BlendingMode.DIFFERENCE,\n';
+    script += '  "exclusion": BlendingMode.EXCLUSION,\n';
+    script += '  "subtract": BlendingMode.SUBTRACT,\n';
+    script += '  "divide": BlendingMode.DIVIDE,\n';
+    script += '  "hue": BlendingMode.HUE,\n';
+    script += '  "saturation": BlendingMode.SATURATION,\n';
+    script += '  "color": BlendingMode.COLOR,\n';
+    script += '  "luminosity": BlendingMode.LUMINOSITY\n';
+    script += '};\n\n';
     
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name,
-        is3D: layer.threeDLayer
-      }
-    };
-  `,
+    script += 'var mode = blendModeMap["' + params.blendMode + '"];\n';
+    script += 'if (!mode) {\n';
+    script += '  throw new Error("Invalid blend mode: ' + params.blendMode + '");\n';
+    script += '}\n\n';
+    
+    script += 'layer.blendingMode = mode;\n\n';
+    
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name,\n';
+    script += '    blendMode: "' + params.blendMode + '"\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
+  
+  setLayer3d: (params: { compId: number; layerIndex: number; is3D: boolean }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
+    
+    script += 'layer.threeDLayer = ' + params.is3D + ';\n\n';
+    
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name,\n';
+    script += '    is3D: layer.threeDLayer\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
   
   setLayerVisibility: (params: { 
     compId: number; 
@@ -202,70 +212,84 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     solo?: boolean;
     shy?: boolean;
     locked?: boolean;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
+    
+    if (params.visible !== undefined) {
+      script += 'layer.enabled = ' + params.visible + ';\n';
+    }
+    if (params.solo !== undefined) {
+      script += 'layer.solo = ' + params.solo + ';\n';
+    }
+    if (params.shy !== undefined) {
+      script += 'layer.shy = ' + params.shy + ';\n';
+    }
+    if (params.locked !== undefined) {
+      script += 'layer.locked = ' + params.locked + ';\n';
     }
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += '\nreturn {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name,\n';
+    script += '    visible: layer.enabled,\n';
+    script += '    solo: layer.solo,\n';
+    script += '    shy: layer.shy,\n';
+    script += '    locked: layer.locked\n';
+    script += '  }\n';
+    script += '};';
     
-    ` + (params.visible !== undefined ? `layer.enabled = ${params.visible};` : '') + `
-    ` + (params.solo !== undefined ? `layer.solo = ${params.solo};` : '') + `
-    ` + (params.shy !== undefined ? `layer.shy = ${params.shy};` : '') + `
-    ` + (params.locked !== undefined ? `layer.locked = ${params.locked};` : '') + `
-    
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name,
-        visible: layer.enabled,
-        solo: layer.solo,
-        shy: layer.shy,
-        locked: layer.locked
-      }
-    };
-  `,
+    return script;
+  },
   
-  setTrackMatte: (params: { compId: number; layerIndex: number; matteType: string }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  setTrackMatte: (params: { compId: number; layerIndex: number; matteType: string }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    var trackMatteMap = {
-      "none": TrackMatteType.NO_TRACK_MATTE,
-      "alpha": TrackMatteType.ALPHA,
-      "alphaInverted": TrackMatteType.ALPHA_INVERTED,
-      "luma": TrackMatteType.LUMA,
-      "lumaInverted": TrackMatteType.LUMA_INVERTED
-    };
+    script += 'var trackMatteMap = {\n';
+    script += '  "none": TrackMatteType.NO_TRACK_MATTE,\n';
+    script += '  "alpha": TrackMatteType.ALPHA,\n';
+    script += '  "alphaInverted": TrackMatteType.ALPHA_INVERTED,\n';
+    script += '  "luma": TrackMatteType.LUMA,\n';
+    script += '  "lumaInverted": TrackMatteType.LUMA_INVERTED\n';
+    script += '};\n\n';
     
-    var matteType = trackMatteMap["${params.matteType}"];
-    if (matteType === undefined) {
-      throw new Error("Invalid track matte type: ${params.matteType}");
-    }
+    script += 'var matteType = trackMatteMap["' + params.matteType + '"];\n';
+    script += 'if (matteType === undefined) {\n';
+    script += '  throw new Error("Invalid track matte type: ' + params.matteType + '");\n';
+    script += '}\n\n';
     
-    layer.trackMatteType = matteType;
+    script += 'layer.trackMatteType = matteType;\n\n';
     
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name,
-        trackMatteType: "${params.matteType}"
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name,\n';
+    script += '    trackMatteType: "' + params.matteType + '"\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
   
   modifyLayer3dProperties: (params: {
     compId: number;
@@ -277,164 +301,185 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       zRotation?: number;
       materialOptions?: any;
     };
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
+    
+    script += 'if (!layer.threeDLayer) {\n';
+    script += '  throw new Error("Layer is not a 3D layer");\n';
+    script += '}\n\n';
+    
+    if (params.properties.orientation) {
+      script += 'layer.property("Orientation").setValue([' + params.properties.orientation.join(',') + ']);\n';
+    }
+    if (params.properties.xRotation !== undefined) {
+      script += 'layer.property("X Rotation").setValue(' + params.properties.xRotation + ');\n';
+    }
+    if (params.properties.yRotation !== undefined) {
+      script += 'layer.property("Y Rotation").setValue(' + params.properties.yRotation + ');\n';
+    }
+    if (params.properties.zRotation !== undefined) {
+      script += 'layer.property("Z Rotation").setValue(' + params.properties.zRotation + ');\n';
     }
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
-    
-    if (!layer.threeDLayer) {
-      throw new Error("Layer is not a 3D layer");
-    }
-    
-    ` + (params.properties.orientation ? `layer.property("Orientation").setValue([${params.properties.orientation.join(',')}]);` : '') + `
-    ` + (params.properties.xRotation !== undefined ? `layer.property("X Rotation").setValue(${params.properties.xRotation});` : '') + `
-    ` + (params.properties.yRotation !== undefined ? `layer.property("Y Rotation").setValue(${params.properties.yRotation});` : '') + `
-    ` + (params.properties.zRotation !== undefined ? `layer.property("Z Rotation").setValue(${params.properties.zRotation});` : '') + `
-    
-    ` + (params.properties.materialOptions ? `
-      var materialOptions = layer.property("Material Options");
-      var options = ${JSON.stringify(params.properties.materialOptions)};
+    if (params.properties.materialOptions) {
+      script += '\nvar materialOptions = layer.property("Material Options");\n';
+      script += 'var options = ' + JSON.stringify(params.properties.materialOptions) + ';\n\n';
       
-      if (options.acceptsLights !== undefined) {
-        materialOptions.property("Accepts Lights").setValue(options.acceptsLights ? 1 : 0);
-      }
-      if (options.acceptsShadows !== undefined) {
-        materialOptions.property("Accepts Shadows").setValue(options.acceptsShadows ? 1 : 0);
-      }
-      if (options.castsShadows !== undefined) {
-        materialOptions.property("Casts Shadows").setValue(options.castsShadows ? 1 : 0);
-      }
-      if (options.ambientCoefficient !== undefined) {
-        materialOptions.property("Ambient").setValue(options.ambientCoefficient);
-      }
-      if (options.diffuseCoefficient !== undefined) {
-        materialOptions.property("Diffuse").setValue(options.diffuseCoefficient);
-      }
-      if (options.specularCoefficient !== undefined) {
-        materialOptions.property("Specular").setValue(options.specularCoefficient);
-      }
-      if (options.shininess !== undefined) {
-        materialOptions.property("Shininess").setValue(options.shininess);
-      }
-    ` : '') + `
+      script += 'if (options.acceptsLights !== undefined) {\n';
+      script += '  materialOptions.property("Accepts Lights").setValue(options.acceptsLights ? 1 : 0);\n';
+      script += '}\n';
+      script += 'if (options.acceptsShadows !== undefined) {\n';
+      script += '  materialOptions.property("Accepts Shadows").setValue(options.acceptsShadows ? 1 : 0);\n';
+      script += '}\n';
+      script += 'if (options.castsShadows !== undefined) {\n';
+      script += '  materialOptions.property("Casts Shadows").setValue(options.castsShadows ? 1 : 0);\n';
+      script += '}\n';
+      script += 'if (options.ambientCoefficient !== undefined) {\n';
+      script += '  materialOptions.property("Ambient").setValue(options.ambientCoefficient);\n';
+      script += '}\n';
+      script += 'if (options.diffuseCoefficient !== undefined) {\n';
+      script += '  materialOptions.property("Diffuse").setValue(options.diffuseCoefficient);\n';
+      script += '}\n';
+      script += 'if (options.specularCoefficient !== undefined) {\n';
+      script += '  materialOptions.property("Specular").setValue(options.specularCoefficient);\n';
+      script += '}\n';
+      script += 'if (options.shininess !== undefined) {\n';
+      script += '  materialOptions.property("Shininess").setValue(options.shininess);\n';
+      script += '}\n';
+    }
     
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name,
-        is3D: true
-      }
-    };
-  `,
+    script += '\nreturn {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name,\n';
+    script += '    is3D: true\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
   
-  setLayerQuality: (params: { compId: number; layerIndex: number; quality: string }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  setLayerQuality: (params: { compId: number; layerIndex: number; quality: string }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    var qualityMap = {
-      "best": LayerQuality.BEST,
-      "draft": LayerQuality.DRAFT,
-      "wireframe": LayerQuality.WIREFRAME
-    };
+    script += 'var qualityMap = {\n';
+    script += '  "best": LayerQuality.BEST,\n';
+    script += '  "draft": LayerQuality.DRAFT,\n';
+    script += '  "wireframe": LayerQuality.WIREFRAME\n';
+    script += '};\n\n';
     
-    var quality = qualityMap["${params.quality}"];
-    if (!quality) {
-      throw new Error("Invalid quality setting: ${params.quality}");
-    }
+    script += 'var quality = qualityMap["' + params.quality + '"];\n';
+    script += 'if (!quality) {\n';
+    script += '  throw new Error("Invalid quality setting: ' + params.quality + '");\n';
+    script += '}\n\n';
     
-    layer.quality = quality;
+    script += 'layer.quality = quality;\n\n';
     
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name,
-        quality: "${params.quality}"
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name,\n';
+    script += '    quality: "' + params.quality + '"\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
   
-  setMotionBlur: (params: { compId: number; layerIndex: number; enabled: boolean; adjustmentLayer?: boolean }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  setMotionBlur: (params: { compId: number; layerIndex: number; enabled: boolean; adjustmentLayer?: boolean }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
+    
+    script += 'layer.motionBlur = ' + params.enabled + ';\n';
+    
+    if (params.adjustmentLayer !== undefined) {
+      script += 'if (layer.adjustmentLayer) {\n';
+      script += '  // Adjustment layer motion blur affects layers below it\n';
+      script += '}\n';
     }
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += '\nreturn {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name,\n';
+    script += '    motionBlur: layer.motionBlur\n';
+    script += '  }\n';
+    script += '};';
     
-    layer.motionBlur = ${params.enabled};
-    ` + (params.adjustmentLayer !== undefined ? `
-      if (layer.adjustmentLayer) {
-        // Adjustment layer motion blur affects layers below it
-      }
-    ` : '') + `
-    
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name,
-        motionBlur: layer.motionBlur
-      }
-    };
-  `,
+    return script;
+  },
   
-  setTimeRemapping: (params: { compId: number; layerIndex: number; enabled: boolean }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  setTimeRemapping: (params: { compId: number; layerIndex: number; enabled: boolean }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
     
-    // Check if layer supports time remapping
-    // CompItem layers (nested compositions) also support time remapping
-    var isValidLayer = false;
-    try {
-      // Try to access source to determine layer type
-      if (layer.source) {
-        isValidLayer = layer.source instanceof CompItem || layer.source instanceof FootageItem;
-      }
-    } catch (e) {
-      // If we cannot access source, try to enable time remapping anyway
-      isValidLayer = true;
-    }
+    script += '// Check if layer supports time remapping\n';
+    script += '// CompItem layers (nested compositions) also support time remapping\n';
+    script += 'var isValidLayer = false;\n';
+    script += 'try {\n';
+    script += '  // Try to access source to determine layer type\n';
+    script += '  if (layer.source) {\n';
+    script += '    isValidLayer = layer.source instanceof CompItem || layer.source instanceof FootageItem;\n';
+    script += '  }\n';
+    script += '} catch (e) {\n';
+    script += '  // If we cannot access source, try to enable time remapping anyway\n';
+    script += '  isValidLayer = true;\n';
+    script += '}\n\n';
     
-    if (!isValidLayer) {
-      throw new Error("Time remapping can only be applied to composition or footage layers");
-    }
+    script += 'if (!isValidLayer) {\n';
+    script += '  throw new Error("Time remapping can only be applied to composition or footage layers");\n';
+    script += '}\n\n';
     
-    layer.timeRemapEnabled = ${params.enabled};
+    script += 'layer.timeRemapEnabled = ' + params.enabled + ';\n\n';
     
-    return {
-      success: true,
-      data: {
-        index: layer.index,
-        name: layer.name,
-        timeRemapEnabled: layer.timeRemapEnabled
-      }
-    };
-  `,
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    index: layer.index,\n';
+    script += '    name: layer.name,\n';
+    script += '    timeRemapEnabled: layer.timeRemapEnabled\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
   
   animateTimeRemap: (params: { 
     compId: number; 
