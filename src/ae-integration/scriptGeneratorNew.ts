@@ -88,6 +88,7 @@ export class ScriptGenerator {
       'set_motion_blur': 'setMotionBlur',
       'set_layer_visibility': 'setLayerVisibility',
       'set_time_remapping': 'setTimeRemapping',
+      'animate_time_remap': 'animateTimeRemap',
       
       // Effect and keyframe aliases
       'apply_effect': 'applyEffect',

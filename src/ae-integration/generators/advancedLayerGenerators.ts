@@ -447,16 +447,23 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     script += '// Enable time remapping first\n';
     script += 'layer.timeRemapEnabled = true;\n\n';
     
-    script += '// Get the Time Remap property\n';
-    script += 'var timeRemap = layer.property("Time Remap");\n';
+    script += '// Get the Time Remap property using the correct property path\n';
+    script += 'var timeRemap = layer.property("ADBE Time Remapping");\n';
     script += 'if (!timeRemap) {\n';
     script += '  throw new Error("Could not access Time Remap property");\n';
     script += '}\n\n';
     
     if (params.clearExisting !== false) {
-      script += '// Clear existing keyframes\n';
-      script += 'while (timeRemap.numKeys > 0) {\n';
-      script += '  timeRemap.removeKey(1);\n';
+      script += '// Clear existing keyframes except the default ones\n';
+      script += '// When time remapping is enabled, AE creates 2 default keyframes\n';
+      script += 'while (timeRemap.numKeys > 2) {\n';
+      script += '  timeRemap.removeKey(timeRemap.numKeys);\n';
+      script += '}\n';
+      script += '// Remove the default keyframes if we are setting new ones\n';
+      script += 'if (timeRemap.numKeys > 0 && ' + JSON.stringify(params.keyframes) + '.length > 0) {\n';
+      script += '  while (timeRemap.numKeys > 0) {\n';
+      script += '    timeRemap.removeKey(1);\n';
+      script += '  }\n';
       script += '}\n\n';
     }
     
