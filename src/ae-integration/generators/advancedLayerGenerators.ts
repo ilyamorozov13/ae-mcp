@@ -25,13 +25,12 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     }
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: camera.index,\n';
-    script += '    name: camera.name\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = camera.index;\n';
+    script += 'result.data.name = camera.name;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -72,13 +71,12 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       script += 'light.property("Light Options").property("Intensity").setValue(' + params.intensity + ');\n\n';
     }
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: light.index,\n';
-    script += '    name: light.name\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = light.index;\n';
+    script += 'result.data.name = light.name;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -105,14 +103,13 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       script += 'childLayer.parent = null;\n\n';
     }
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    childIndex: childLayer.index,\n';
-    script += '    childName: childLayer.name,\n';
-    script += '    parentIndex: ' + (params.parentLayerIndex != null ? params.parentLayerIndex : 'null') + '\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.childIndex = childLayer.index;\n';
+    script += 'result.data.childName = childLayer.name;\n';
+    script += 'result.data.parentIndex = ' + (params.parentLayerIndex != null ? params.parentLayerIndex : 'null') + ';\n';
+    script += 'return result;';
     
     return script;
   },
@@ -167,14 +164,13 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     
     script += 'layer.blendingMode = mode;\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    blendMode: "' + params.blendMode + '"\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = layer.index;\n';
+    script += 'result.data.name = layer.name;\n';
+    script += 'result.data.blendMode = "' + params.blendMode + '";\n';
+    script += 'return result;';
     
     return script;
   },
@@ -193,14 +189,13 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     
     script += 'layer.threeDLayer = ' + params.is3D + ';\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    is3D: layer.threeDLayer\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = layer.index;\n';
+    script += 'result.data.name = layer.name;\n';
+    script += 'result.data.is3D = layer.threeDLayer;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -237,17 +232,16 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       script += 'layer.locked = ' + params.locked + ';\n';
     }
     
-    script += '\nreturn {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    visible: layer.enabled,\n';
-    script += '    solo: layer.solo,\n';
-    script += '    shy: layer.shy,\n';
-    script += '    locked: layer.locked\n';
-    script += '  }\n';
-    script += '};';
+    script += '\nvar result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = layer.index;\n';
+    script += 'result.data.name = layer.name;\n';
+    script += 'result.data.visible = layer.enabled;\n';
+    script += 'result.data.solo = layer.solo;\n';
+    script += 'result.data.shy = layer.shy;\n';
+    script += 'result.data.locked = layer.locked;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -279,14 +273,13 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     
     script += 'layer.trackMatteType = matteType;\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    trackMatteType: "' + params.matteType + '"\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = layer.index;\n';
+    script += 'result.data.name = layer.name;\n';
+    script += 'result.data.trackMatteType = "' + params.matteType + '";\n';
+    script += 'return result;';
     
     return script;
   },
@@ -332,39 +325,38 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     
     if (params.properties.materialOptions) {
       script += '\nvar materialOptions = layer.property("Material Options");\n';
-      script += 'var options = ' + JSON.stringify(params.properties.materialOptions) + ';\n\n';
+      const opts = params.properties.materialOptions;
       
-      script += 'if (options.acceptsLights !== undefined) {\n';
-      script += '  materialOptions.property("Accepts Lights").setValue(options.acceptsLights ? 1 : 0);\n';
-      script += '}\n';
-      script += 'if (options.acceptsShadows !== undefined) {\n';
-      script += '  materialOptions.property("Accepts Shadows").setValue(options.acceptsShadows ? 1 : 0);\n';
-      script += '}\n';
-      script += 'if (options.castsShadows !== undefined) {\n';
-      script += '  materialOptions.property("Casts Shadows").setValue(options.castsShadows ? 1 : 0);\n';
-      script += '}\n';
-      script += 'if (options.ambientCoefficient !== undefined) {\n';
-      script += '  materialOptions.property("Ambient").setValue(options.ambientCoefficient);\n';
-      script += '}\n';
-      script += 'if (options.diffuseCoefficient !== undefined) {\n';
-      script += '  materialOptions.property("Diffuse").setValue(options.diffuseCoefficient);\n';
-      script += '}\n';
-      script += 'if (options.specularCoefficient !== undefined) {\n';
-      script += '  materialOptions.property("Specular").setValue(options.specularCoefficient);\n';
-      script += '}\n';
-      script += 'if (options.shininess !== undefined) {\n';
-      script += '  materialOptions.property("Shininess").setValue(options.shininess);\n';
-      script += '}\n';
+      if (opts.acceptsLights !== undefined) {
+        script += 'materialOptions.property("Accepts Lights").setValue(' + (opts.acceptsLights ? 1 : 0) + ');\n';
+      }
+      if (opts.acceptsShadows !== undefined) {
+        script += 'materialOptions.property("Accepts Shadows").setValue(' + (opts.acceptsShadows ? 1 : 0) + ');\n';
+      }
+      if (opts.castsShadows !== undefined) {
+        script += 'materialOptions.property("Casts Shadows").setValue(' + (opts.castsShadows ? 1 : 0) + ');\n';
+      }
+      if (opts.ambientCoefficient !== undefined) {
+        script += 'materialOptions.property("Ambient").setValue(' + opts.ambientCoefficient + ');\n';
+      }
+      if (opts.diffuseCoefficient !== undefined) {
+        script += 'materialOptions.property("Diffuse").setValue(' + opts.diffuseCoefficient + ');\n';
+      }
+      if (opts.specularCoefficient !== undefined) {
+        script += 'materialOptions.property("Specular").setValue(' + opts.specularCoefficient + ');\n';
+      }
+      if (opts.shininess !== undefined) {
+        script += 'materialOptions.property("Shininess").setValue(' + opts.shininess + ');\n';
+      }
     }
     
-    script += '\nreturn {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    is3D: true\n';
-    script += '  }\n';
-    script += '};';
+    script += '\nvar result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = layer.index;\n';
+    script += 'result.data.name = layer.name;\n';
+    script += 'result.data.is3D = true;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -394,14 +386,13 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     
     script += 'layer.quality = quality;\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    quality: "' + params.quality + '"\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = layer.index;\n';
+    script += 'result.data.name = layer.name;\n';
+    script += 'result.data.quality = "' + params.quality + '";\n';
+    script += 'return result;';
     
     return script;
   },
@@ -426,14 +417,13 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       script += '}\n';
     }
     
-    script += '\nreturn {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    motionBlur: layer.motionBlur\n';
-    script += '  }\n';
-    script += '};';
+    script += '\nvar result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = layer.index;\n';
+    script += 'result.data.name = layer.name;\n';
+    script += 'result.data.motionBlur = layer.motionBlur;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -469,14 +459,13 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     
     script += 'layer.timeRemapEnabled = ' + params.enabled + ';\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    timeRemapEnabled: layer.timeRemapEnabled\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.index = layer.index;\n';
+    script += 'result.data.name = layer.name;\n';
+    script += 'result.data.timeRemapEnabled = layer.timeRemapEnabled;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -500,10 +489,10 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     
     script += '// CRITICAL CHECK: Verify layer can actually support time remapping\n';
     script += 'if (!layer.canSetTimeRemapEnabled) {\n';
-    script += '  var errorMsg = "Layer \\\\"" + layer.name + "\\\\" cannot have time remapping enabled. ";\n';
+    script += '  var errorMsg = "Layer " + layer.name + " cannot have time remapping enabled. ";\n';
     script += '  \n';
     script += '  if (layer.source) {\n';
-    script += '    errorMsg += "Source: \\\\"" + layer.source.name + "\\\\" (Type: " + layer.source.constructor.name + "). ";\n';
+    script += '    errorMsg += "Source: " + layer.source.name + " (Type: " + layer.source.constructor.name + "). ";\n';
     script += '    \n';
     script += '    if (layer.source instanceof CompItem) {\n';
     script += '      if (layer.source.duration === 0) {\n';
@@ -523,60 +512,30 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     script += '// Enable time remapping first\n';
     script += 'layer.timeRemapEnabled = true;\n\n';
     
-    script += '// CRITICAL FIX: After enabling time remapping, we need to access it through the correct property path\n';
-    script += '// Time Remap is not a direct property but needs to be accessed through the correct property group\n';
+    script += '// Access Time Remap property - now that it is enabled\n';
     script += 'var timeRemap = null;\n';
-    script += 'var attempts = 0;\n';
-    script += 'var maxAttempts = 3;\n\n';
-    
-    script += '// Multiple approaches to access Time Remap property\n';
-    script += 'while (!timeRemap && attempts < maxAttempts) {\n';
-    script += '  attempts++;\n';
-    script += '  \n';
+    script += 'try {\n';
+    script += '  // Method 1: Direct access with ADBE property name\n';
+    script += '  timeRemap = layer.property("ADBE Time Remapping");\n';
+    script += '} catch (e) {\n';
+    script += '  // Method 2: Access through property path\n';
     script += '  try {\n';
-    script += '    switch(attempts) {\n';
-    script += '      case 1:\n';
-    script += '        // First attempt: Direct access with ADBE property name\n';
-    script += '        timeRemap = layer.property("ADBE Time Remapping");\n';
+    script += '    timeRemap = layer.property("ADBE Layer Overrides").property("ADBE Time Remapping");\n';
+    script += '  } catch (e2) {\n';
+    script += '    // Method 3: Search by name\n';
+    script += '    var numProps = layer.numProperties;\n';
+    script += '    for (var i = 1; i <= numProps; i++) {\n';
+    script += '      var prop = layer.property(i);\n';
+    script += '      if (prop && (prop.name === "Time Remap" || prop.matchName === "ADBE Time Remapping")) {\n';
+    script += '        timeRemap = prop;\n';
     script += '        break;\n';
-    script += '      case 2:\n';
-    script += '        // Second attempt: Force refresh and use standard name\n';
-    script += '        layer.selected = true;\n';
-    script += '        layer.selected = false;\n';
-    script += '        // Access through the layer\'s time remap property directly\n';
-    script += '        if (layer.canSetTimeRemapEnabled && layer.timeRemapEnabled) {\n';
-    script += '          // For AVLayer (comp/footage), time remap is a direct property\n';
-    script += '          timeRemap = layer.timeRemap;\n';
-    script += '        }\n';
-    script += '        break;\n';
-    script += '      case 3:\n';
-    script += '        // Third attempt: Use property index\n';
-    script += '        // Time Remap is typically the last property when enabled\n';
-    script += '        var numProps = layer.numProperties;\n';
-    script += '        for (var i = 1; i <= numProps; i++) {\n';
-    script += '          var prop = layer.property(i);\n';
-    script += '          if (prop && prop.name === "Time Remap") {\n';
-    script += '            timeRemap = prop;\n';
-    script += '            break;\n';
-    script += '          }\n';
-    script += '        }\n';
-    script += '        break;\n';
+    script += '      }\n';
     script += '    }\n';
-    script += '    \n';
-    script += '    // Verify we got a valid property that can accept keyframes\n';
-    script += '    if (timeRemap && timeRemap.canSetExpression) {\n';
-    script += '      break; // Success!\n';
-    script += '    } else {\n';
-    script += '      timeRemap = null; // Reset if invalid\n';
-    script += '    }\n';
-    script += '  } catch (e) {\n';
-    script += '    // Continue to next attempt\n';
-    script += '    timeRemap = null;\n';
     script += '  }\n';
     script += '}\n\n';
     
     script += 'if (!timeRemap) {\n';
-    script += '  throw new Error("Could not access Time Remap property after " + attempts + " attempts. Layer type: " + layer.constructor.name + ", Layer name: " + layer.name);\n';
+    script += '  throw new Error("Could not access Time Remap property. Layer: " + layer.name + ", Type: " + layer.constructor.name);\n';
     script += '}\n\n';
     
     script += '// Additional validation\n';
@@ -601,7 +560,13 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     }
     
     script += '// Add keyframes - ensure layer duration is sufficient\n';
-    script += 'var keyframes = ' + JSON.stringify(params.keyframes) + ';\n';
+    script += 'var keyframes = [];\n';
+    for (let i = 0; i < params.keyframes.length; i++) {
+      const kf = params.keyframes[i];
+      script += 'keyframes[' + i + '] = {};\n';
+      script += 'keyframes[' + i + '].time = ' + kf.time + ';\n';
+      script += 'keyframes[' + i + '].value = ' + kf.value + ';\n';
+    }
     script += 'var maxTime = 0;\n';
     script += 'for (var i = 0; i < keyframes.length; i++) {\n';
     script += '  if (keyframes[i].time > maxTime) {\n';
@@ -623,15 +588,14 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     script += '  }\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerIndex: layer.index,\n';
-    script += '    layerName: layer.name,\n';
-    script += '    keyframesSet: keyframes.length,\n';
-    script += '    timeRemapEnabled: true\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.layerIndex = layer.index;\n';
+    script += 'result.data.layerName = layer.name;\n';
+    script += 'result.data.keyframesSet = keyframes.length;\n';
+    script += 'result.data.timeRemapEnabled = true;\n';
+    script += 'return result;';
     
     return script;
   }

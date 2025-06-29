@@ -57,14 +57,13 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '  throw new Error("Effect \\\\"" + effectName + "\\\\" not available. Fast Blur has been replaced with Fast Box Blur in newer versions of After Effects.");\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerName: layer.name,\n';
-    script += '    effectName: effect.name,\n';
-    script += '    effectIndex: effect.propertyIndex\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.layerName = layer.name;\n';
+    script += 'result.data.effectName = effect.name;\n';
+    script += 'result.data.effectIndex = effect.propertyIndex;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -124,8 +123,30 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     
     script += '// Special handling for Time Remap\n';
     script += 'if (normalizedProperty === "Time Remap" || propertyName === "Time Remap") {\n';
-    script += '  if (layer instanceof AVLayer && !layer.timeRemapEnabled) {\n';
+    script += '  // Check if time remapping needs to be enabled first\n';
+    script += '  if (layer.canSetTimeRemapEnabled && !layer.timeRemapEnabled) {\n';
     script += '    throw new Error("Time Remap is not enabled for this layer. Use set_time_remapping to enable it first, or use animate_time_remap which handles this automatically.");\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  // For Time Remap, try multiple access methods\n';
+    script += '  if (!prop) {\n';
+    script += '    try {\n';
+    script += '      prop = layer.property("ADBE Time Remapping");\n';
+    script += '    } catch (e) {\n';
+    script += '      try {\n';
+    script += '        prop = layer.property("ADBE Layer Overrides").property("ADBE Time Remapping");\n';
+    script += '      } catch (e2) {\n';
+    script += '        // Search by name as last resort\n';
+    script += '        var numProps = layer.numProperties;\n';
+    script += '        for (var i = 1; i <= numProps; i++) {\n';
+    script += '          var testProp = layer.property(i);\n';
+    script += '          if (testProp && (testProp.name === "Time Remap" || testProp.matchName === "ADBE Time Remapping")) {\n';
+    script += '            prop = testProp;\n';
+    script += '            break;\n';
+    script += '          }\n';
+    script += '        }\n';
+    script += '      }\n';
+    script += '    }\n';
     script += '  }\n';
     script += '}\n\n';
     
@@ -187,15 +208,14 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '  throw new Error("Failed to set keyframe at time " + time + " with value " + value + ": " + e.toString());\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.property) + '",\n';
-    script += '    time: time,\n';
-    script += '    value: value,\n';
-    script += '    numKeys: prop.numKeys\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.property) + '";\n';
+    script += 'result.data.time = time;\n';
+    script += 'result.data.value = value;\n';
+    script += 'result.data.numKeys = prop.numKeys;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -264,14 +284,13 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '  if (results[i].success) successCount++;\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    total: keyframes.length,\n';
-    script += '    successful: successCount,\n';
-    script += '    results: results\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.total = keyframes.length;\n';
+    script += 'result.data.successful = successCount;\n';
+    script += 'result.data.results = results;\n';
+    script += 'return result;';
     
     return script;
   }

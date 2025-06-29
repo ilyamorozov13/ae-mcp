@@ -12,39 +12,78 @@ export const maskGenerators: ScriptGeneratorModule = {
       outTangents?: number[][];
       closed?: boolean;
     };
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
+    
+    script += 'var mask = layer.property("Masks").addProperty("Mask");\n';
+    if (params.name) {
+      script += 'mask.name = "' + helpers.escapeString(params.name) + '";\n';
     }
+    script += '\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
-    
-    var mask = layer.property("Masks").addProperty("Mask");
-    ${params.name ? `mask.name = "${helpers.escapeString(params.name)}";` : ''}
-    
-    ${params.maskShape ? `
-      var shape = new Shape();
-      shape.vertices = ${JSON.stringify(params.maskShape.vertices)};
-      ${params.maskShape.inTangents ? `shape.inTangents = ${JSON.stringify(params.maskShape.inTangents)};` : ''}
-      ${params.maskShape.outTangents ? `shape.outTangents = ${JSON.stringify(params.maskShape.outTangents)};` : ''}
-      shape.closed = ${params.maskShape.closed !== false};
-      
-      mask.property("Mask Path").setValue(shape);
-    ` : ''}
-    
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        maskIndex: mask.propertyIndex,
-        maskName: mask.name
+    if (params.maskShape) {
+      script += 'var shape = new Shape();\n';
+      script += 'shape.vertices = [\n';
+      for (let i = 0; i < params.maskShape.vertices.length; i++) {
+        const vertex = params.maskShape.vertices[i];
+        script += '  [' + vertex[0] + ', ' + vertex[1] + ']';
+        if (i < params.maskShape.vertices.length - 1) {
+          script += ',';
+        }
+        script += '\n';
       }
-    };
-  `,
+      script += '];\n';
+      
+      if (params.maskShape.inTangents) {
+        script += 'shape.inTangents = [\n';
+        for (let i = 0; i < params.maskShape.inTangents.length; i++) {
+          const tangent = params.maskShape.inTangents[i];
+          script += '  [' + tangent[0] + ', ' + tangent[1] + ']';
+          if (i < params.maskShape.inTangents.length - 1) {
+            script += ',';
+          }
+          script += '\n';
+        }
+        script += '];\n';
+      }
+      
+      if (params.maskShape.outTangents) {
+        script += 'shape.outTangents = [\n';
+        for (let i = 0; i < params.maskShape.outTangents.length; i++) {
+          const tangent = params.maskShape.outTangents[i];
+          script += '  [' + tangent[0] + ', ' + tangent[1] + ']';
+          if (i < params.maskShape.outTangents.length - 1) {
+            script += ',';
+          }
+          script += '\n';
+        }
+        script += '];\n';
+      }
+      
+      script += 'shape.closed = ' + (params.maskShape.closed !== false) + ';\n\n';
+      script += 'mask.property("Mask Path").setValue(shape);\n';
+    }
+    
+    script += '\nreturn {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerName: layer.name,\n';
+    script += '    maskIndex: mask.propertyIndex,\n';
+    script += '    maskName: mask.name\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  },
 
   addRectangularMask: (params: {
     compId: number;

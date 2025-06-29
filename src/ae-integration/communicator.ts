@@ -1,7 +1,7 @@
 import net from 'net';
 import { Logger } from 'winston';
 import { ScriptGenerator } from './scriptGenerator.js';
-import { AEError, AEErrorHandler } from './errorHandler.js';
+import { AEErrorInfo, AEErrorHandler, createAEError } from './errorHandler.js';
 
 interface PendingCommand {
   resolve: (value: any) => void;
@@ -97,7 +97,7 @@ export class AECommunicator {
     this.pendingCommands.delete(id);
     
     if (error) {
-      pending.reject(new AEError(error.message, error.code));
+      pending.reject(createAEError(error.message, error.code));
     } else {
       pending.resolve(result);
     }
@@ -111,7 +111,7 @@ export class AECommunicator {
     // Validate parameters before execution
     const validation = AEErrorHandler.validateParams(command, params);
     if (!validation.valid) {
-      throw new AEError(
+      throw createAEError(
         `Invalid parameters for ${command}: ${validation.errors.join(', ')}`,
         'INVALID_PARAMS',
         { errors: validation.errors },

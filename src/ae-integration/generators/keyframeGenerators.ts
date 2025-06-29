@@ -174,15 +174,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       }
     }
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    time: ' + params.time + ',\n';
-    script += '    value: value,\n';
-    script += '    keyIndex: keyIndex\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.time = ' + params.time + ';\n';
+    script += 'result.data.value = value;\n';
+    script += 'result.data.keyIndex = keyIndex;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -357,19 +356,18 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '  throw new Error("No keyframes were modified. Check keyframe indices.");\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    layerName: layer.name,\n';
-    script += '    layerIndex: layer.index,\n';
-    script += '    keyframesModified: modifiedCount,\n';
-    script += '    totalKeyframes: prop.numKeys,\n';
-    script += '    easeType: easeType,\n';
-    script += '    propertyType: prop.propertyValueType,\n';
-    script += '    appliedIndices: keyIndices\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.layerName = layer.name;\n';
+    script += 'result.data.layerIndex = layer.index;\n';
+    script += 'result.data.keyframesModified = modifiedCount;\n';
+    script += 'result.data.totalKeyframes = prop.numKeys;\n';
+    script += 'result.data.easeType = easeType;\n';
+    script += 'result.data.propertyType = prop.propertyValueType;\n';
+    script += 'result.data.appliedIndices = keyIndices;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -443,15 +441,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '// Apply updated ease\n';
     script += 'prop.setTemporalEaseAtKey(keyIndex, currentInEase, currentOutEase);\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    keyframeIndex: keyIndex,\n';
-    script += '    incomingVelocity: ' + (params.incomingVelocity !== undefined ? params.incomingVelocity : 'currentInEase[0].speed') + ',\n';
-    script += '    outgoingVelocity: ' + (params.outgoingVelocity !== undefined ? params.outgoingVelocity : 'currentOutEase[0].speed') + '\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.keyframeIndex = keyIndex;\n';
+    script += 'result.data.incomingVelocity = ' + (params.incomingVelocity !== undefined ? params.incomingVelocity : 'currentInEase[0].speed') + ';\n';
+    script += 'result.data.outgoingVelocity = ' + (params.outgoingVelocity !== undefined ? params.outgoingVelocity : 'currentOutEase[0].speed') + ';\n';
+    script += 'return result;';
     
     return script;
   },
@@ -571,13 +568,12 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '  }\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    keyframeIndex: keyIndex\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.keyframeIndex = keyIndex;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -624,13 +620,12 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     
     script += 'prop.setSpatialTangentsAtKey(keyIndex, inTangent, outTangent);\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerName: layer.name,\n';
-    script += '    keyframeIndex: keyIndex\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.layerName = layer.name;\n';
+    script += 'result.data.keyframeIndex = keyIndex;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -711,15 +706,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     
     script += 'prop.setInterpolationTypeAtKey(keyIndex, inType, outType);\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    keyframeIndex: keyIndex,\n';
-    script += '    inType: "' + (params.inType || 'unchanged') + '",\n';
-    script += '    outType: "' + (params.outType || 'unchanged') + '"\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.keyframeIndex = keyIndex;\n';
+    script += 'result.data.inType = "' + (params.inType || 'unchanged') + '";\n';
+    script += 'result.data.outType = "' + (params.outType || 'unchanged') + '";\n';
+    script += 'return result;';
     
     return script;
   },
@@ -826,8 +820,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '          numDimensions = value.length;\n';
     script += '        } else {\n';
     script += '          // Fallback to property type checking\n';
-    script += '          if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
-    script += '              prop.propertyValueType === PropertyValueType.TwoD) {\n';
+    script += '          if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || prop.propertyValueType === PropertyValueType.TwoD) {\n';
     script += '            numDimensions = 2;\n';
     script += '          } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || prop.propertyValueType === PropertyValueType.ThreeD) {\n';
     script += '            numDimensions = 3;\n';
@@ -857,15 +850,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '  }\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    keyframesSet: keyframes.length,\n';
-    script += '    firstTime: keyframes[0].time,\n';
-    script += '    lastTime: keyframes[keyframes.length - 1].time\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.keyframesSet = keyframes.length;\n';
+    script += 'result.data.firstTime = keyframes[0].time;\n';
+    script += 'result.data.lastTime = keyframes[keyframes.length - 1].time;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -944,16 +936,15 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '  targetProp.setTemporalEaseAtKey(keyIndex, keyframeInEases[i], keyframeOutEases[i]);\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    sourceLayer: sourceLayer.name,\n';
-    script += '    targetLayer: targetLayer.name,\n';
-    script += '    keyframesCopied: keyframeTimes.length,\n';
-    script += '    timeOffset: timeOffset,\n';
-    script += '    reversed: ' + (params.reverseKeyframes ? 'true' : 'false') + '\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.sourceLayer = sourceLayer.name;\n';
+    script += 'result.data.targetLayer = targetLayer.name;\n';
+    script += 'result.data.keyframesCopied = keyframeTimes.length;\n';
+    script += 'result.data.timeOffset = timeOffset;\n';
+    script += 'result.data.reversed = ' + (params.reverseKeyframes ? 'true' : 'false') + ';\n';
+    script += 'return result;';
     
     return script;
   },
@@ -1012,23 +1003,23 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '  for (var i = 0; i < keyIndices.length; i++) {\n';
     script += '    var keyIndex = keyIndices[i];\n';
     script += '    if (keyIndex > 0 && keyIndex <= prop.numKeys) {\n';
-    script += '      keyframeData.push({\n';
-    script += '        time: prop.keyTime(keyIndex),\n';
-    script += '        value: prop.keyValue(keyIndex),\n';
-    script += '        inEase: prop.keyInTemporalEase(keyIndex),\n';
-    script += '        outEase: prop.keyOutTemporalEase(keyIndex)\n';
-    script += '      });\n';
+    script += '      var kfData = {};\n';
+    script += '      kfData.time = prop.keyTime(keyIndex);\n';
+    script += '      kfData.value = prop.keyValue(keyIndex);\n';
+    script += '      kfData.inEase = prop.keyInTemporalEase(keyIndex);\n';
+    script += '      kfData.outEase = prop.keyOutTemporalEase(keyIndex);\n';
+    script += '      keyframeData.push(kfData);\n';
     script += '    }\n';
     script += '  }\n';
     script += '} else {\n';
     script += '  // All keyframes\n';
     script += '  for (var i = 1; i <= prop.numKeys; i++) {\n';
-    script += '    keyframeData.push({\n';
-    script += '      time: prop.keyTime(i),\n';
-    script += '      value: prop.keyValue(i),\n';
-    script += '      inEase: prop.keyInTemporalEase(i),\n';
-    script += '      outEase: prop.keyOutTemporalEase(i)\n';
-    script += '    });\n';
+    script += '    var kfData = {};\n';
+    script += '    kfData.time = prop.keyTime(i);\n';
+    script += '    kfData.value = prop.keyValue(i);\n';
+    script += '    kfData.inEase = prop.keyInTemporalEase(i);\n';
+    script += '    kfData.outEase = prop.keyOutTemporalEase(i);\n';
+    script += '    keyframeData.push(kfData);\n';
     script += '  }\n';
     script += '}\n\n';
     
@@ -1044,14 +1035,13 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '  prop.setTemporalEaseAtKey(newKeyIndex, kf.inEase, kf.outEase);\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    keyframesOffset: keyframeData.length,\n';
-    script += '    offset: offset\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.keyframesOffset = keyframeData.length;\n';
+    script += 'result.data.offset = offset;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -1105,12 +1095,12 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '// Store keyframe data\n';
     script += 'var keyframeData = [];\n';
     script += 'for (var i = 1; i <= prop.numKeys; i++) {\n';
-    script += '  keyframeData.push({\n';
-    script += '    time: prop.keyTime(i),\n';
-    script += '    value: prop.keyValue(i),\n';
-    script += '    inEase: prop.keyInTemporalEase(i),\n';
-    script += '    outEase: prop.keyOutTemporalEase(i)\n';
-    script += '  });\n';
+    script += '  var kfData = {};\n';
+    script += '  kfData.time = prop.keyTime(i);\n';
+    script += '  kfData.value = prop.keyValue(i);\n';
+    script += '  kfData.inEase = prop.keyInTemporalEase(i);\n';
+    script += '  kfData.outEase = prop.keyOutTemporalEase(i);\n';
+    script += '  keyframeData.push(kfData);\n';
     script += '}\n\n';
     
     script += '// Clear and reapply with scaled timing\n';
@@ -1126,15 +1116,14 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '  prop.setTemporalEaseAtKey(newKeyIndex, kf.inEase, kf.outEase);\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    keyframesScaled: keyframeData.length,\n';
-    script += '    scaleFactor: scaleFactor,\n';
-    script += '    anchorTime: anchorTime\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.keyframesScaled = keyframeData.length;\n';
+    script += 'result.data.scaleFactor = scaleFactor;\n';
+    script += 'result.data.anchorTime = anchorTime;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -1219,13 +1208,12 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '  prop.setTemporalEaseAtKey(keyIndex, reversedInEases[i], reversedOutEases[i]);\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    property: "' + helpers.escapeString(params.propertyPath) + '",\n';
-    script += '    keyframesReversed: keyframeTimes.length\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.property = "' + helpers.escapeString(params.propertyPath) + '";\n';
+    script += 'result.data.keyframesReversed = keyframeTimes.length;\n';
+    script += 'return result;';
     
     return script;
   },
@@ -1448,16 +1436,15 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '    break;\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerName: layer.name,\n';
-    script += '    preset: preset,\n';
-    script += '    startTime: startTime,\n';
-    script += '    duration: duration,\n';
-    script += '    propertiesAnimated: properties\n';
-    script += '  }\n';
-    script += '};';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'result.data.layerName = layer.name;\n';
+    script += 'result.data.preset = preset;\n';
+    script += 'result.data.startTime = startTime;\n';
+    script += 'result.data.duration = duration;\n';
+    script += 'result.data.propertiesAnimated = properties;\n';
+    script += 'return result;';
     
     return script;
   }

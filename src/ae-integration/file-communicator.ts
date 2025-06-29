@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import { Logger } from 'winston';
 import { ScriptGenerator } from './scriptGenerator.js';
-import { AEError, AEErrorHandler } from './errorHandler.js';
+import { AEErrorInfo, AEErrorHandler, createAEError } from './errorHandler.js';
 
 interface PendingCommand {
   resolve: (value: any) => void;
@@ -189,7 +189,7 @@ export class AEFileCommunicator {
             
             // Resolve promise
             if (!response.result || typeof response.result !== 'object') {
-              pending.reject(new AEError('Invalid response format: missing result property', 'INVALID_RESPONSE'));
+              pending.reject(createAEError('Invalid response format: missing result property', 'INVALID_RESPONSE'));
             } else if (response.result.success) {
               // Mark that we've successfully completed at least one command
               this.isFirstCommand = false;
@@ -206,7 +206,7 @@ export class AEFileCommunicator {
                 errorMessage = response.result.error;
               }
               
-              pending.reject(new AEError(errorMessage, errorCode));
+              pending.reject(createAEError(errorMessage, errorCode));
             }
           } else {
             // Clean up orphaned response
@@ -234,7 +234,7 @@ export class AEFileCommunicator {
     // Validate parameters before execution
     const validation = AEErrorHandler.validateParams(command, params);
     if (!validation.valid) {
-      throw new AEError(
+      throw createAEError(
         `Invalid parameters for ${command}: ${validation.errors.join(', ')}`,
         'INVALID_PARAMS',
         { errors: validation.errors },
@@ -247,11 +247,12 @@ export class AEFileCommunicator {
       return await this.sendScript(script, command);
     } catch (error: any) {
       // Enhanced error with context
-      throw AEErrorHandler.formatError(error, {
+      const errorInfo = AEErrorHandler.formatError(error, {
         command,
         params,
         scriptSnippet: error.script
       });
+      throw errorInfo;
     }
   }
   

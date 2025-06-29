@@ -6,18 +6,27 @@ export interface AEErrorContext {
   propertyInfo?: any;
 }
 
-export class AEError extends Error {
+export interface AEErrorInfo {
+  name: string;
+  message: string;
   code: string;
   details?: any;
   context?: AEErrorContext;
-  
-  constructor(message: string, code: string = 'AE_ERROR', details?: any, context?: AEErrorContext) {
-    super(message);
-    this.name = 'AEError';
-    this.code = code;
-    this.details = details;
-    this.context = context;
-  }
+  timestamp: string;
+  level: string;
+  stack?: string;
+}
+
+export function createAEError(message: string, code: string = 'AE_ERROR', details?: any, context?: AEErrorContext): AEErrorInfo {
+  return {
+    name: 'AEError',
+    message: message,
+    code: code,
+    details: details || {},
+    context: context,
+    timestamp: new Date().toISOString(),
+    level: 'error'
+  };
 }
 
 export class AEErrorHandler {
@@ -46,16 +55,27 @@ export class AEErrorHandler {
     99: 'AE_INVALID_TIME'
   };
 
-  static formatError(error: any, context?: AEErrorContext): AEError {
+  static formatError(error: any, context?: AEErrorContext): AEErrorInfo {
     const message = error.message || error.toString();
     const code = error.code || error.number || this.mapErrorCode(message);
     const details = error.details || {};
 
-    if (error.number && this.AE_ERROR_CODES[error.number]) {
-      return new AEError(message, this.AE_ERROR_CODES[error.number], details, context);
+    // Add stack trace if available
+    const errorInfo: AEErrorInfo = {
+      name: 'AEError',
+      message: message,
+      code: error.number && this.AE_ERROR_CODES[error.number] ? this.AE_ERROR_CODES[error.number] : code,
+      details: details,
+      context: context,
+      timestamp: new Date().toISOString(),
+      level: 'error'
+    };
+
+    if (error.stack) {
+      errorInfo.stack = error.stack;
     }
 
-    return new AEError(message, code, details, context);
+    return errorInfo;
   }
 
   private static mapErrorCode(message: string): string {
@@ -221,10 +241,19 @@ export class AEErrorHandler {
   }
 }
 
-export function mapAEError(error: any): AEError {
-  if (error instanceof AEError) {
-    return error;
+export function mapAEError(error: any): AEErrorInfo {
+  // Check if it's already our error format
+  if (error && error.name === 'AEError' && error.code && error.message) {
+    return error as AEErrorInfo;
   }
   
   return AEErrorHandler.formatError(error);
+}
+
+// Helper function to create a simple error that won't cause ES3 issues
+export function createSimpleError(message: string, code?: string): { message: string; code: string } {
+  return {
+    message: message,
+    code: code || 'EXECUTION_ERROR'
+  };
 }

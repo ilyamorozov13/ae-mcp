@@ -3,8 +3,9 @@
  * Tests command validation, parameter handling, and ES3 compatibility
  */
 
-import { AEErrorHandler } from '../ae-integration/errorHandler.js';
-import { ScriptGenerator } from '../ae-integration/scriptGeneratorNew.js';
+import { describe, it, expect } from '@jest/globals';
+import { AEErrorHandler } from '../ae-integration/errorHandler';
+import { ScriptGenerator } from '../ae-integration/scriptGeneratorNew';
 
 interface TestCase {
   command: string;
@@ -307,8 +308,20 @@ export function runAllTests() {
   return totalFailed === 0;
 }
 
-// Export for command-line execution
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const success = runAllTests();
-  process.exit(success ? 0 : 1);
-}
+// Jest test suites
+describe('AE Commands Validation', () => {
+  it('should validate parameters correctly', () => {
+    const results = runValidationTests();
+    expect(results.failed).toBe(0);
+  });
+
+  it('should generate ES3 compatible scripts', () => {
+    const results = runES3CompatibilityTests();
+    expect(results.failed).toBe(0);
+  });
+
+  it('should provide helpful error messages', () => {
+    const results = runErrorMessageTests();
+    expect(results.failed).toBe(0);
+  });
+});
