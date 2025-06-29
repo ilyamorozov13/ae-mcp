@@ -386,7 +386,7 @@ export const layerGenerators: ScriptGeneratorModule = {
     script += 'var targetIndex = ' + params.newIndex + ';\n\n';
     
     script += 'if (targetIndex < 1 || targetIndex > comp.numLayers) {\n';
-    script += '  throw new Error("New index out of range");\n';
+    script += '  throw new Error("New index " + targetIndex + " is out of range. Valid range is 1 to " + comp.numLayers + " (composition has " + comp.numLayers + " layers)");\n';
     script += '}\n\n';
     
     script += 'if (targetIndex !== currentIndex) {\n';

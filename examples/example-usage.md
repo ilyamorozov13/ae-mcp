@@ -181,6 +181,83 @@ In After Effects, Layer 1 is on TOP. When creating backgrounds:
 - "Move to 2 seconds and set position to 1500, 540"
 - "Create a fade in animation from 0 to 1 second"
 
+### Expressions - IMPORTANT: Use `set_expression`, not `add_expression`!
+
+#### Basic Expression Setting
+```javascript
+// ✅ CORRECT: Use set_expression
+{
+  "tool": "set_expression",
+  "params": {
+    "compId": 1,
+    "layerIndex": 1,
+    "propertyPath": "Transform.Position",
+    "expression": "[960, 540 + Math.sin(time * 2) * 100]"
+  }
+}
+
+// ❌ WRONG: There is no add_expression tool
+// { "tool": "add_expression", ... } // This will fail!
+```
+
+#### Add Wiggle Expression
+```javascript
+// For wiggle, use the specialized tool
+{
+  "tool": "add_wiggle_expression",
+  "params": {
+    "compId": 1,
+    "layerIndex": 1,
+    "propertyPath": "Transform.Position",
+    "frequency": 3,
+    "amplitude": 50
+  }
+}
+```
+
+#### Link Properties with Expression
+```javascript
+// Link one layer's rotation to another's
+{
+  "tool": "link_properties_with_expression",
+  "params": {
+    "compId": 1,
+    "sourceLayer": 1,
+    "sourceProperty": "Transform.Rotation",
+    "targetLayer": 2,
+    "targetProperty": "Transform.Rotation",
+    "linkType": "multiply",
+    "multiplier": -1  // Inverse rotation
+  }
+}
+```
+
+#### Add Expression Controls
+```javascript
+// Add a slider control for dynamic values
+{
+  "tool": "add_expression_control",
+  "params": {
+    "compId": 1,
+    "layerIndex": 1,
+    "controlType": "slider",
+    "name": "Speed Control",
+    "value": 5
+  }
+}
+
+// Then reference it in an expression
+{
+  "tool": "set_expression",
+  "params": {
+    "compId": 1,
+    "layerIndex": 1,
+    "propertyPath": "Transform.Rotation",
+    "expression": "effect('Speed Control')('Slider') * time * 10"
+  }
+}
+```
+
 ### Complete Example: Title Card with Background (Correct Order)
 
 ```javascript

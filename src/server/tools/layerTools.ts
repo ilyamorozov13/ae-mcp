@@ -265,11 +265,11 @@ export const layerTools = [
         },
         layerIndex: { 
           type: "number", 
-          description: "Current index of the layer to move" 
+          description: "Current index of the layer to move (1-based)" 
         },
         newIndex: { 
           type: "number", 
-          description: "New index position for the layer" 
+          description: "New index position for the layer (must be between 1 and the total number of layers in the composition)" 
         }
       },
       required: ["compId", "layerIndex", "newIndex"]

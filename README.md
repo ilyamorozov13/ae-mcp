@@ -127,6 +127,17 @@ For Claude Desktop, add to `~/Library/Application Support/Claude/claude_desktop_
 - `get_render_status` - Check render progress
 - `set_render_settings` - Configure render settings
 
+### Expression Tools
+- `set_expression` - Set an expression on a layer property (NOT add_expression)
+- `get_expression` - Get the expression from a layer property
+- `remove_expression` - Remove an expression from a property
+- `enable_expression` - Enable or disable an expression
+- `batch_set_expressions` - Set multiple expressions at once
+- `add_wiggle_expression` - Add a wiggle expression to a property
+- `add_loop_expression` - Add a loop expression to a property
+- `link_properties_with_expression` - Link two properties together
+- `add_expression_control` - Add expression control effects (slider, checkbox, etc.)
+
 ### Batch Tools
 - `batch_create_comps` - Create multiple compositions at once
 - `batch_import` - Import multiple files
@@ -239,6 +250,10 @@ node dist/stdio-server-hybrid.js
 ## Examples
 
 See the `examples/` directory for usage examples.
+
+### Additional Guides
+- [Expression Tools Guide](EXPRESSIONS.md) - Comprehensive guide for using expressions (IMPORTANT: use `set_expression`, not `add_expression`)
+- [Layer Ordering Guide](LAYER_ORDERING.md) - Understanding After Effects layer stacking
 
 ## License
 
