@@ -151,6 +151,30 @@ export class AEErrorHandler {
   static validateParams(command: string, params: any): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
+    // Commands that don't require any parameters
+    const noParamCommands = [
+      'list_compositions',
+      'listCompositions',
+      'get_project_info',
+      'getProjectInfo',
+      'get_ae_version',
+      'getAeVersion',
+      'get_render_queue',
+      'getRenderQueue',
+      'start_render',
+      'startRender',
+      'pause_render',
+      'pauseRender',
+      'stop_render',
+      'stopRender',
+      'ping'
+    ];
+
+    // Skip validation for commands that don't require parameters
+    if (noParamCommands.includes(command)) {
+      return { valid: true, errors: [] };
+    }
+
     if (params.compId !== undefined && (typeof params.compId !== 'number' || params.compId < 1)) {
       errors.push('compId must be a positive number');
     }

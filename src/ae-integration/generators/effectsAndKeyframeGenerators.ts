@@ -54,7 +54,7 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '}\n\n';
     
     script += 'if (!effect) {\n';
-    script += '  throw new Error("Effect \\\\"' + helpers.escapeString(params.effectName) + '\\\\" not available. Fast Blur has been replaced with Fast Box Blur in newer versions of After Effects.");\n';
+    script += '  throw new Error("Effect \\\\"" + effectName + "\\\\" not available. Fast Blur has been replaced with Fast Box Blur in newer versions of After Effects.");\n';
     script += '}\n\n';
     
     script += 'return {\n';
