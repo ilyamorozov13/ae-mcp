@@ -170,8 +170,11 @@ export const textGenerators: ScriptGeneratorModule = {
     script += '}\n\n';
     
     script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer || !(layer instanceof TextLayer)) {\n';
-    script += '  throw new Error("Text layer not found");\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer at index ' + params.layerIndex + ' not found in composition");\n';
+    script += '}\n';
+    script += 'if (!(layer instanceof TextLayer)) {\n';
+    script += '  throw new Error("Layer at index ' + params.layerIndex + ' is not a text layer (it is a " + layer.constructor.name + ")");\n';
     script += '}\n\n';
     
     script += 'var textProp = layer.property("Source Text");\n';
@@ -300,8 +303,11 @@ export const textGenerators: ScriptGeneratorModule = {
     script += '}\n\n';
     
     script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer || !(layer instanceof TextLayer)) {\n';
-    script += '  throw new Error("Text layer not found");\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer at index ' + params.layerIndex + ' not found in composition");\n';
+    script += '}\n';
+    script += 'if (!(layer instanceof TextLayer)) {\n';
+    script += '  throw new Error("Layer at index ' + params.layerIndex + ' is not a text layer (it is a " + layer.constructor.name + ")");\n';
     script += '}\n\n';
     
     script += 'var textAnimators = layer.property("Text").property("Animators");\n';
@@ -438,8 +444,11 @@ export const textGenerators: ScriptGeneratorModule = {
     script += '}\n\n';
     
     script += 'var textLayer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!textLayer || !(textLayer instanceof TextLayer)) {\n';
-    script += '  throw new Error("Text layer not found");\n';
+    script += 'if (!textLayer) {\n';
+    script += '  throw new Error("Layer at index ' + params.layerIndex + ' not found in composition");\n';
+    script += '}\n';
+    script += 'if (!(textLayer instanceof TextLayer)) {\n';
+    script += '  throw new Error("Layer at index ' + params.layerIndex + ' is not a text layer (it is a " + textLayer.constructor.name + ")");\n';
     script += '}\n\n';
     
     script += 'var originalName = textLayer.name;\n';

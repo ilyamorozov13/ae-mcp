@@ -366,7 +366,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += 'result.data.totalKeyframes = prop.numKeys;\n';
     script += 'result.data.easeType = easeType;\n';
     script += 'result.data.propertyType = prop.propertyValueType;\n';
-    script += 'result.data.appliedIndices = keyIndices;\n';
+    script += 'result.data.appliedIndices = keyIndices.slice();\n';
     script += 'return result;';
     
     return script;
