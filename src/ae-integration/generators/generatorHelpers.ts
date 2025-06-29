@@ -44,7 +44,18 @@ export const generatorHelpers = {
     }[layerType] || layerType;
     
     script += 'if (!(layer instanceof ' + typeCheck + ')) {\n';
-    script += '  throw new Error("' + (errorMessage || 'Layer is not a ' + layerType) + '");\n';
+    if (errorMessage) {
+      script += '  throw new Error("' + errorMessage + '");\n';
+    } else {
+      // Generate detailed error message with layer type info (using dynamic layer.index)
+      const layerTypeName = layerType === 'TextLayer' ? 'text' : 
+                           layerType === 'ShapeLayer' ? 'shape' :
+                           layerType === 'AVLayer' ? 'AV' :
+                           layerType === 'CameraLayer' ? 'camera' :
+                           layerType === 'LightLayer' ? 'light' :
+                           layerType.toLowerCase();
+      script += '  throw new Error("Layer at index " + layer.index + " is not a ' + layerTypeName + ' layer (it is a " + layer.constructor.name + ")");\n';
+    }
     script += '}\n\n';
     return script;
   },
@@ -54,10 +65,10 @@ export const generatorHelpers = {
    */
   generateSuccessReturn: (dataObject: string): string => {
     let script = '';
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: ' + dataObject + '\n';
-    script += '};';
+    script += 'var returnObj = {};\n';
+    script += 'returnObj.success = true;\n';
+    script += 'returnObj.data = ' + dataObject + ';\n';
+    script += 'return returnObj;';
     return script;
   },
 
@@ -215,6 +226,7 @@ export const generatorHelpers = {
 
   /**
    * Generate null/undefined check with default value
+   * For use in generated ExtendScript code, not TypeScript
    */
   getValueOrDefault: (paramPath: string, defaultValue: any): string => {
     if (typeof defaultValue === 'string') {
@@ -225,6 +237,29 @@ export const generatorHelpers = {
       return '(' + paramPath + ' || [' + defaultValue.join(', ') + '])';
     } else {
       return '(' + paramPath + ' || ' + JSON.stringify(defaultValue) + ')';
+    }
+  },
+  
+  /**
+   * Generate value or default directly in TypeScript generator context
+   */
+  getParamWithDefault: (param: any, defaultValue: any): string => {
+    if (param !== undefined) {
+      if (typeof param === 'string') {
+        return '"' + helpers.escapeString(param) + '"';
+      } else if (Array.isArray(param)) {
+        return '[' + param.join(', ') + ']';
+      } else {
+        return String(param);
+      }
+    } else {
+      if (typeof defaultValue === 'string') {
+        return '"' + helpers.escapeString(defaultValue) + '"';
+      } else if (Array.isArray(defaultValue)) {
+        return '[' + defaultValue.join(', ') + ']';
+      } else {
+        return String(defaultValue);
+      }
     }
   },
 

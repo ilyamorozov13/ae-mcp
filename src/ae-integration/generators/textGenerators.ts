@@ -1,5 +1,6 @@
 import { ScriptGeneratorModule } from './types.js';
 import { helpers } from './helpers.js';
+import { generatorHelpers as gh } from './generatorHelpers.js';
 
 export const textGenerators: ScriptGeneratorModule = {
   addTextLayerAdvanced: (params: {
@@ -26,14 +27,13 @@ export const textGenerators: ScriptGeneratorModule = {
     };
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
+    
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
     
     script += 'var textLayer = comp.layers.addText();\n';
     if (params.name) {
-      script += 'textLayer.name = "' + helpers.escapeString(params.name) + '";\n';
+      script += gh.setStringProperty('textLayer', 'name', params.name);
     }
     script += '\n';
     
@@ -50,20 +50,19 @@ export const textGenerators: ScriptGeneratorModule = {
       
       if (params.sourceText.font) {
         // After Effects requires PostScript name for fonts with spaces
-        script += 'try {\n';
-        script += '  // Try setting font directly first\n';
-        script += '  textDocument.font = "' + helpers.escapeString(params.sourceText.font) + '";\n';
-        script += '} catch (e) {\n';
-        script += '  // If that fails, try removing spaces (common for fonts like "Arial Black" -> "ArialBlack")\n';
-        script += '  var fontNameNoSpaces = "' + helpers.escapeString(params.sourceText.font) + '".replace(/ /g, "");\n';
-        script += '  try {\n';
-        script += '    textDocument.font = fontNameNoSpaces;\n';
-        script += '  } catch (e2) {\n';
-        script += '    // If both fail, try with hyphen (e.g., "Arial Black" -> "Arial-Black")\n';
-        script += '    var fontNameHyphen = "' + helpers.escapeString(params.sourceText.font) + '".replace(/ /g, "-");\n';
-        script += '    textDocument.font = fontNameHyphen;\n';
-        script += '  }\n';
-        script += '}\n';
+        script += gh.wrapInTryCatch(
+          '  // Try setting font directly first\n' +
+          '  textDocument.font = "' + helpers.escapeString(params.sourceText.font) + '";\n',
+          '  // If that fails, try removing spaces (common for fonts like "Arial Black" -> "ArialBlack")\n' +
+          '  var fontNameNoSpaces = "' + helpers.escapeString(params.sourceText.font) + '".replace(/ /g, "");\n' +
+          '  try {\n' +
+          '    textDocument.font = fontNameNoSpaces;\n' +
+          '  } catch (e2) {\n' +
+          '    // If both fail, try with hyphen (e.g., "Arial Black" -> "Arial-Black")\n' +
+          '    var fontNameHyphen = "' + helpers.escapeString(params.sourceText.font) + '".replace(/ /g, "-");\n' +
+          '    textDocument.font = fontNameHyphen;\n' +
+          '  }\n'
+        );
       }
       if (params.sourceText.fontSize !== undefined) {
         script += 'textDocument.fontSize = ' + params.sourceText.fontSize + ';\n';
@@ -115,33 +114,34 @@ export const textGenerators: ScriptGeneratorModule = {
       if (params.sourceText.horizontalScale !== undefined) {
         script += 'textDocument.horizontalScale = ' + params.sourceText.horizontalScale + ';\n';
       }
-      script += '// Note: allCaps and smallCaps are read-only properties in After Effects and cannot be set directly\n';
-      script += '\n';
+      if (params.sourceText.allCaps !== undefined) {
+        script += 'textDocument.allCaps = ' + params.sourceText.allCaps + ';\n';
+      }
+      if (params.sourceText.smallCaps !== undefined) {
+        script += 'textDocument.smallCaps = ' + params.sourceText.smallCaps + ';\n';
+      }
     }
     
-    script += '// Apply the text document\n';
+    script += '\n// Apply the text document back to the property\n';
     script += 'textProp.setValue(textDocument);\n\n';
     
     // Set transform properties
     if (params.position) {
+      script += '// Set position\n';
       script += 'textLayer.property("Position").setValue([' + params.position.join(',') + ']);\n';
     }
     if (params.anchor) {
+      script += '// Set anchor point\n';
       script += 'textLayer.property("Anchor Point").setValue([' + params.anchor.join(',') + ']);\n';
     }
     script += '\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: textLayer.index,\n';
-    script += '    name: textLayer.name\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    index: textLayer.index,\n    name: textLayer.name\n  }');
     
     return script;
   },
-
+  
   modifyTextProperties: (params: {
     compId: number;
     layerIndex: number;
@@ -164,18 +164,11 @@ export const textGenerators: ScriptGeneratorModule = {
     };
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer at index ' + params.layerIndex + ' not found in composition");\n';
-    script += '}\n';
-    script += 'if (!(layer instanceof TextLayer)) {\n';
-    script += '  throw new Error("Layer at index ' + params.layerIndex + ' is not a text layer (it is a " + layer.constructor.name + ")");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex, 'Layer at index ' + params.layerIndex + ' not found in composition');
+    script += gh.validateLayerType('TextLayer');
     
     script += 'var textProp = layer.property("Source Text");\n';
     script += 'var textDocument = textProp.value;\n\n';
@@ -192,20 +185,19 @@ export const textGenerators: ScriptGeneratorModule = {
     script += '\n// Update font properties\n';
     if (params.properties.font) {
       // After Effects requires PostScript name for fonts with spaces
-      script += 'try {\n';
-      script += '  // Try setting font directly first\n';
-      script += '  textDocument.font = "' + helpers.escapeString(params.properties.font) + '";\n';
-      script += '} catch (e) {\n';
-      script += '  // If that fails, try removing spaces (common for fonts like "Arial Black" -> "ArialBlack")\n';
-      script += '  var fontNameNoSpaces = "' + helpers.escapeString(params.properties.font) + '".replace(/ /g, "");\n';
-      script += '  try {\n';
-      script += '    textDocument.font = fontNameNoSpaces;\n';
-      script += '  } catch (e2) {\n';
-      script += '    // If both fail, try with hyphen (e.g., "Arial Black" -> "Arial-Black")\n';
-      script += '    var fontNameHyphen = "' + helpers.escapeString(params.properties.font) + '".replace(/ /g, "-");\n';
-      script += '    textDocument.font = fontNameHyphen;\n';
-      script += '  }\n';
-      script += '}\n';
+      script += gh.wrapInTryCatch(
+        '  // Try setting font directly first\n' +
+        '  textDocument.font = "' + helpers.escapeString(params.properties.font) + '";\n',
+        '  // If that fails, try removing spaces (common for fonts like "Arial Black" -> "ArialBlack")\n' +
+        '  var fontNameNoSpaces = "' + helpers.escapeString(params.properties.font) + '".replace(/ /g, "");\n' +
+        '  try {\n' +
+        '    textDocument.font = fontNameNoSpaces;\n' +
+        '  } catch (e2) {\n' +
+        '    // If both fail, try with hyphen (e.g., "Arial Black" -> "Arial-Black")\n' +
+        '    var fontNameHyphen = "' + helpers.escapeString(params.properties.font) + '".replace(/ /g, "-");\n' +
+        '    textDocument.font = fontNameHyphen;\n' +
+        '  }\n'
+      );
     }
     if (params.properties.fontSize !== undefined) {
       script += 'textDocument.fontSize = ' + params.properties.fontSize + ';\n';
@@ -269,20 +261,15 @@ export const textGenerators: ScriptGeneratorModule = {
       script += 'textDocument.horizontalScale = ' + params.properties.horizontalScale + ';\n';
     }
     
-    script += '\n// Apply the updated text document\n';
+    script += '\n// Apply the text document back to the property\n';
     script += 'textProp.setValue(textDocument);\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerName: layer.name,\n';
-    script += '    layerIndex: layer.index\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    layerIndex: layer.index\n  }');
     
     return script;
   },
-
+  
   addTextAnimator: (params: {
     compId: number;
     layerIndex: number;
@@ -297,197 +284,149 @@ export const textGenerators: ScriptGeneratorModule = {
     };
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
+    
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
+    script += gh.validateLayerType('TextLayer', 'Layer is not a text layer');
+    
+    script += '// Get text animators\n';
+    script += 'var textProp = layer.property("Text");\n';
+    script += 'var animators = textProp.property("Animators");\n';
+    script += 'if (!animators) {\n';
+    script += '  throw new Error("Cannot access Text Animators");\n';
     script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer at index ' + params.layerIndex + ' not found in composition");\n';
-    script += '}\n';
-    script += 'if (!(layer instanceof TextLayer)) {\n';
-    script += '  throw new Error("Layer at index ' + params.layerIndex + ' is not a text layer (it is a " + layer.constructor.name + ")");\n';
-    script += '}\n\n';
+    script += '// Add new animator\n';
+    script += 'var animator = animators.addProperty("ADBE Text Animator");\n';
+    script += 'animator.name = ' + gh.getParamWithDefault(params.animatorName, 'Animator') + ';\n\n';
     
-    script += 'var textAnimators = layer.property("Text").property("Animators");\n';
-    script += 'var animator = textAnimators.addProperty("ADBE Text Animator");\n';
-    if (params.animatorName) {
-      script += 'animator.name = "' + helpers.escapeString(params.animatorName) + '";\n';
-    }
-    script += '\n';
-    
-    script += '// Add properties to animate\n';
-    script += 'var animatorProperties = animator.property("ADBE Text Animator Properties");\n';
-    script += 'var properties = ' + JSON.stringify(params.properties) + ';\n\n';
+    script += '// Add properties to animator\n';
+    script += 'var animatorProps = animator.property("ADBE Text Animator Properties");\n';
+    script += 'var properties = ' + JSON.stringify(params.properties) + ';\n';
+    script += 'var addedProps = [];\n\n';
     
     script += 'for (var i = 0; i < properties.length; i++) {\n';
     script += '  var propName = properties[i];\n';
-    script += '  var propMap = {\n';
-    script += '    "position": "ADBE Text Position 3D",\n';
-    script += '    "scale": "ADBE Text Scale 3D",\n';
-    script += '    "rotation": "ADBE Text Rotation",\n';
-    script += '    "opacity": "ADBE Text Opacity",\n';
-    script += '    "anchorPoint": "ADBE Text Anchor Point 3D",\n';
-    script += '    "fillColor": "ADBE Text Fill Color",\n';
-    script += '    "strokeColor": "ADBE Text Stroke Color",\n';
-    script += '    "strokeWidth": "ADBE Text Stroke Width",\n';
-    script += '    "tracking": "ADBE Text Tracking Amount",\n';
-    script += '    "lineAnchor": "ADBE Text Line Anchor",\n';
-    script += '    "blur": "ADBE Text Blur"\n';
-    script += '  };\n';
+    script += '  var propToAdd = null;\n';
     script += '  \n';
-    script += '  var aePropertyName = propMap[propName];\n';
-    script += '  if (aePropertyName) {\n';
-    script += '    try {\n';
-    script += '      animatorProperties.addProperty(aePropertyName);\n';
-    script += '    } catch (e) {\n';
-    script += '      // Property might not be available in this AE version\n';
-    script += '    }\n';
+    script += '  switch(propName.toLowerCase()) {\n';
+    script += '    case "position":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Position 3D");\n';
+    script += '      break;\n';
+    script += '    case "scale":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Scale 3D");\n';
+    script += '      break;\n';
+    script += '    case "rotation":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Rotation");\n';
+    script += '      break;\n';
+    script += '    case "opacity":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Opacity");\n';
+    script += '      break;\n';
+    script += '    case "anchorpoint":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Anchor Point 3D");\n';
+    script += '      break;\n';
+    script += '    case "fillcolor":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Fill Color");\n';
+    script += '      break;\n';
+    script += '    case "strokecolor":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Stroke Color");\n';
+    script += '      break;\n';
+    script += '    case "strokewidth":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Stroke Width");\n';
+    script += '      break;\n';
+    script += '    case "tracking":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Tracking Amount");\n';
+    script += '      break;\n';
+    script += '    case "lineanchor":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Line Anchor");\n';
+    script += '      break;\n';
+    script += '    case "blur":\n';
+    script += '      propToAdd = animatorProps.addProperty("ADBE Text Blur");\n';
+    script += '      break;\n';
+    script += '  }\n';
+    script += '  \n';
+    script += '  if (propToAdd) {\n';
+    script += '    addedProps.push(propName);\n';
     script += '  }\n';
     script += '}\n\n';
     
-    script += '// Configure selector\n';
-    script += 'var selectors = animator.property("ADBE Text Selectors");\n\n';
-    
-    script += '// Check if there\'s already a default selector\n';
-    script += 'var selector = null;\n';
-    script += 'if (selectors.numProperties > 0) {\n';
-    script += '  selector = selectors.property(1);\n';
-    script += '} else {\n';
-    script += '  // Add a range selector if none exists\n';
-    script += '  selector = selectors.addProperty("ADBE Text Selector");\n';
-    script += '}\n';
-    
+    // Configure selector if provided
     if (params.selector) {
-      script += '\n';
-      script += 'var selectorConfig = ' + JSON.stringify(params.selector) + ';\n\n';
+      script += '// Configure selector\n';
+      script += 'var selectors = animator.property("ADBE Text Selectors");\n';
+      script += 'var selector = selectors.property(1); // Default range selector\n\n';
       
-      // Set selector type
-      if (params.selector.type === 'wiggly') {
-        script += '// Replace with wiggly selector if requested\n';
-        script += 'if (selector) {\n';
-        script += '  selector.remove();\n';
-        script += '}\n';
-        script += 'selector = selectors.addProperty("ADBE Text Wiggly Selector");\n';
-      }
-      
-      script += '\n// Configure range selector properties\n';
-      script += 'if (selector && selector.matchName === "ADBE Text Selector") {\n';
-      script += '  try {\n';
-      
-      if (params.selector.basedOn) {
-        script += '    var basedOnMap = {\n';
-        script += '      "characters": 1,\n';
-        script += '      "charactersExcludingSpaces": 2,\n';
-        script += '      "words": 3,\n';
-        script += '      "lines": 4\n';
-        script += '    };\n';
-        script += '    var basedOn = basedOnMap["' + params.selector.basedOn + '"];\n';
-        script += '    if (basedOn) {\n';
-        script += '      var rangeUnits = selector.property("ADBE Text Range Units");\n';
-        script += '      if (rangeUnits) {\n';
-        script += '        rangeUnits.setValue(basedOn);\n';
-        script += '      }\n';
-        script += '    }\n';
-      }
-      
+      script += 'if (selector) {\n';
+      script += '  var selectorProps = ' + JSON.stringify(params.selector) + ';\n';
+      script += '  \n';
       if (params.selector.start !== undefined) {
-        script += '    \n';
-        script += '    var rangeStart = selector.property("ADBE Text Range Start");\n';
-        script += '    if (rangeStart) {\n';
-        script += '      rangeStart.setValue(' + params.selector.start + ');\n';
-        script += '    }\n';
+        script += '  selector.property("ADBE Text Index Start").setValue(' + params.selector.start + ');\n';
       }
       if (params.selector.end !== undefined) {
-        script += '    var rangeEnd = selector.property("ADBE Text Range End");\n';
-        script += '    if (rangeEnd) {\n';
-        script += '      rangeEnd.setValue(' + params.selector.end + ');\n';
-        script += '    }\n';
+        script += '  selector.property("ADBE Text Index End").setValue(' + params.selector.end + ');\n';
       }
       if (params.selector.offset !== undefined) {
-        script += '    var rangeOffset = selector.property("ADBE Text Range Offset");\n';
-        script += '    if (rangeOffset) {\n';
-        script += '      rangeOffset.setValue(' + params.selector.offset + ');\n';
-        script += '    }\n';
+        script += '  selector.property("ADBE Text Range Offset").setValue(' + params.selector.offset + ');\n';
       }
-      
-      script += '  } catch (e) {\n';
-      script += '    // Ignore selector configuration errors\n';
-      script += '  }\n';
-      script += '}\n';
+      if (params.selector.basedOn) {
+        script += '  var basedOnMap = {\n';
+        script += '    "characters": 1,\n';
+        script += '    "charactersExcludingSpaces": 2,\n';
+        script += '    "words": 3,\n';
+        script += '    "lines": 4\n';
+        script += '  };\n';
+        script += '  var basedOnValue = basedOnMap["' + params.selector.basedOn + '"];\n';
+        script += '  if (basedOnValue) {\n';
+        script += '    selector.property("ADBE Text Range Type2").setValue(basedOnValue);\n';
+        script += '  }\n';
+      }
+      script += '}\n\n';
     }
-    script += '\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerName: layer.name,\n';
-    script += '    animatorIndex: animator.propertyIndex,\n';
-    script += '    animatorName: animator.name,\n';
-    script += '    propertiesAdded: properties.length\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    animatorName: animator.name,\n    propertiesAdded: addedProps,\n    layerName: layer.name\n  }');
     
     return script;
   },
-
+  
   convertTextToShape: (params: {
     compId: number;
     layerIndex: number;
     keepOriginal?: boolean;
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var textLayer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!textLayer) {\n';
-    script += '  throw new Error("Layer at index ' + params.layerIndex + ' not found in composition");\n';
-    script += '}\n';
-    script += 'if (!(textLayer instanceof TextLayer)) {\n';
-    script += '  throw new Error("Layer at index ' + params.layerIndex + ' is not a text layer (it is a " + textLayer.constructor.name + ")");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
+    script += gh.validateLayerType('TextLayer', 'Layer is not a text layer');
     
-    script += 'var originalName = textLayer.name;\n';
-    script += 'var originalIndex = textLayer.index;\n\n';
+    script += '// Store original layer info\n';
+    script += 'var originalName = layer.name;\n';
+    script += 'var originalIndex = layer.index;\n\n';
     
-    script += '// Store current time\n';
-    script += 'var currentTime = comp.time;\n\n';
-    
-    script += '// Create shape from text\n';
-    script += 'textLayer.selected = true;\n';
-    script += 'app.executeCommand(3781); // Create Shapes from Text command ID\n\n';
+    script += '// Create outlines (this creates a new shape layer)\n';
+    script += 'var shapeLayer = layer.createOutlines();\n\n';
     
     script += '// The new shape layer is created above the text layer\n';
-    script += 'var shapeLayer = comp.layer(originalIndex);\n';
-    script += 'shapeLayer.name = originalName + " Outlines";\n\n';
-    
+    script += 'if (shapeLayer) {\n';
+    script += '  shapeLayer.name = originalName + " Outlines";\n';
+    script += '  \n';
     if (!params.keepOriginal) {
-      script += '// Remove original text layer\n';
-      script += 'textLayer.remove();\n';
-    } else {
-      script += '// Keep original but disable it\n';
-      script += 'textLayer.enabled = false;\n';
-      script += 'textLayer.name = originalName + " (Original)";\n';
+      script += '  // Remove the original text layer\n';
+      script += '  layer.remove();\n';
     }
-    script += '\n';
+    script += '} else {\n';
+    script += '  throw new Error("Failed to create outlines from text layer");\n';
+    script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    originalLayerName: originalName,\n';
-    script += '    shapeLayerIndex: shapeLayer.index,\n';
-    script += '    shapeLayerName: shapeLayer.name,\n';
-    script += '    originalKept: ' + (params.keepOriginal ? 'true' : 'false') + '\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    originalLayerName: originalName,\n    shapeLayerName: shapeLayer.name,\n    shapeLayerIndex: shapeLayer.index,\n    originalKept: ' + (params.keepOriginal ? 'true' : 'false') + '\n  }');
     
     return script;
   },
-
+  
   createTextOnPath: (params: {
     compId: number;
     text: string;
@@ -500,10 +439,9 @@ export const textGenerators: ScriptGeneratorModule = {
     textProperties?: any;
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
+    
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
     
     script += '// Create text layer\n';
     script += 'var textLayer = comp.layers.addText("' + helpers.escapeString(params.text) + '");\n';
@@ -511,54 +449,43 @@ export const textGenerators: ScriptGeneratorModule = {
     
     // Apply text properties if provided
     if (params.textProperties) {
-      script += '// Apply text properties if provided\n';
+      script += '// Apply text properties\n';
       script += 'var textProp = textLayer.property("Source Text");\n';
       script += 'var textDocument = textProp.value;\n';
-      script += 'var textProps = ' + JSON.stringify(params.textProperties) + ';\n\n';
+      script += 'var props = ' + JSON.stringify(params.textProperties) + ';\n';
       
-      script += '// Apply all text properties similar to modifyTextProperties\n';
-      script += 'if (textProps.font) textDocument.font = textProps.font;\n';
-      script += 'if (textProps.fontSize !== undefined) textDocument.fontSize = textProps.fontSize;\n';
-      script += 'if (textProps.fillColor) {\n';
-      script += '  textDocument.fillColor = textProps.fillColor;\n';
+      // Apply properties similar to modifyTextProperties
+      script += 'if (props.font) textDocument.font = props.font;\n';
+      script += 'if (props.fontSize) textDocument.fontSize = props.fontSize;\n';
+      script += 'if (props.fillColor) {\n';
+      script += '  textDocument.fillColor = props.fillColor;\n';
       script += '  textDocument.applyFill = true;\n';
-      script += '}\n\n';
-      
+      script += '}\n';
       script += 'textProp.setValue(textDocument);\n\n';
     }
     
-    script += '// Create mask from path\n';
+    script += '// Create mask for path\n';
     script += 'var mask = textLayer.property("Masks").addProperty("Mask");\n';
     script += 'mask.name = "Text Path";\n\n';
     
-    script += 'var shape = new Shape();\n';
-    script += 'shape.vertices = ' + JSON.stringify(params.path.vertices) + ';\n';
-    if (params.path.inTangents) {
-      script += 'shape.inTangents = ' + JSON.stringify(params.path.inTangents) + ';\n';
-    }
-    if (params.path.outTangents) {
-      script += 'shape.outTangents = ' + JSON.stringify(params.path.outTangents) + ';\n';
-    }
-    script += 'shape.closed = ' + (params.path.closed ? 'true' : 'false') + ';\n\n';
+    script += '// Set mask path\n';
+    script += 'var maskPath = mask.property("Mask Path");\n';
+    script += 'var path = ' + JSON.stringify(params.path) + ';\n\n';
     
-    script += 'mask.property("Mask Path").setValue(shape);\n\n';
+    script += '// Create shape for mask\n';
+    script += 'var myShape = new Shape();\n';
+    script += 'myShape.vertices = path.vertices;\n';
+    script += 'myShape.inTangents = path.inTangents || [];\n';
+    script += 'myShape.outTangents = path.outTangents || [];\n';
+    script += 'myShape.closed = path.closed || false;\n';
+    script += 'maskPath.setValue(myShape);\n\n';
     
-    script += '// Set mask mode to None so it doesn\'t actually mask\n';
-    script += 'mask.maskMode = MaskMode.NONE;\n\n';
+    script += '// Set up text path options\n';
+    script += 'var textPathOptions = textLayer.property("Text").property("Path Options");\n';
+    script += 'textPathOptions.property("Path").setValue(1); // Set to mask 1\n\n';
     
-    script += '// Add path options to text\n';
-    script += 'var textProp = textLayer.property("Text");\n';
-    script += 'var pathOptions = textProp.property("Path Options");\n';
-    script += 'pathOptions.property("Path").setValue(1); // First mask\n\n';
-    
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerIndex: textLayer.index,\n';
-    script += '    layerName: textLayer.name,\n';
-    script += '    maskIndex: mask.propertyIndex\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: textLayer.name,\n    layerIndex: textLayer.index\n  }');
     
     return script;
   }

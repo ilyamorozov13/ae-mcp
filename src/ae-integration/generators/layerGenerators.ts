@@ -1,5 +1,6 @@
 import { ScriptGeneratorModule } from './types.js';
 import { helpers } from './helpers.js';
+import { generatorHelpers as gh } from './generatorHelpers.js';
 
 export const layerGenerators: ScriptGeneratorModule = {
   addSolidLayer: (params: {
@@ -10,26 +11,21 @@ export const layerGenerators: ScriptGeneratorModule = {
     height?: number;
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
+    
+    // Create solid layer with parameters
     script += 'var layer = comp.layers.addSolid(\n';
-    script += '  [' + (params.color ? params.color.join(',') : '1,1,1') + '],\n';
-    script += '  "' + helpers.escapeString(params.name ? params.name : 'Solid') + '",\n';
+    script += '  ' + gh.getParamWithDefault(params.color, [1, 1, 1]) + ',\n';
+    script += '  ' + gh.getParamWithDefault(params.name, 'Solid') + ',\n';
     script += '  ' + (params.width ? params.width : 'comp.width') + ',\n';
     script += '  ' + (params.height ? params.height : 'comp.height') + ',\n';
     script += '  1.0\n';
     script += ');\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    index: layer.index,\n    name: layer.name\n  }');
     
     return script;
   },
@@ -40,24 +36,18 @@ export const layerGenerators: ScriptGeneratorModule = {
     name?: string;
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
+    
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
     
     script += 'var layer = comp.layers.addText("' + helpers.escapeString(params.text) + '");\n';
     if (params.name) {
-      script += 'layer.name = "' + helpers.escapeString(params.name) + '";\n';
+      script += gh.setStringProperty('layer', 'name', params.name);
     }
     script += '\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    index: layer.index,\n    name: layer.name\n  }');
     
     return script;
   },
@@ -69,20 +59,19 @@ export const layerGenerators: ScriptGeneratorModule = {
     properties?: any;
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
+    
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
     
     script += 'var layer = comp.layers.addShape();\n';
     if (params.name) {
-      script += 'layer.name = "' + helpers.escapeString(params.name) + '";\n';
+      script += gh.setStringProperty('layer', 'name', params.name);
     }
     script += '\n';
     
     script += '// Parse properties\n';
     script += 'var props = ' + (params.properties ? JSON.stringify(params.properties) : '{}') + ';\n';
-    script += 'var shapeType = "' + (params.shapeType ? params.shapeType : 'rectangle') + '";\n\n';
+    script += 'var shapeType = ' + gh.getParamWithDefault(params.shapeType, 'rectangle') + ';\n\n';
     
     script += '// Add shape content - create a shape group for better control\n';
     script += 'var contents = layer.property("ADBE Root Vectors Group");\n';
@@ -111,25 +100,24 @@ export const layerGenerators: ScriptGeneratorModule = {
     script += '  shapePath = vectors.addProperty("ADBE Vector Shape - Star");\n';
     script += '  \n';
     script += '  // Set properties in specific order to avoid hidden property issues\n';
-    script += '  try {\n';
-    script += '    // First set the points - this is usually safe\n';
-    script += '    shapePath.property("ADBE Vector Star Points").setValue(props.points || 5);\n';
-    script += '    \n';
-    script += '    // Then set the outer radius\n';
-    script += '    shapePath.property("ADBE Vector Star Outer Radius").setValue(props.outerRadius || 100);\n';
-    script += '    \n';
-    script += '    // Set the type (polygon vs star) - do this AFTER setting basic properties\n';
-    script += '    if (shapeType === "polygon") {\n';
-    script += '      shapePath.property("ADBE Vector Star Type").setValue(1); // 1 = polygon\n';
-    script += '    } else {\n';
-    script += '      shapePath.property("ADBE Vector Star Type").setValue(2); // 2 = star\n';
-    script += '      // Only set inner radius for actual stars\n';
-    script += '      shapePath.property("ADBE Vector Star Inner Radius").setValue(props.innerRadius || 50);\n';
-    script += '    }\n';
-    script += '  } catch (e) {\n';
-    script += '    // If any property fails, continue with defaults\n';
-    script += '    // The shape is still created\n';
-    script += '  }\n';
+    script += gh.wrapInTryCatch(
+      '    // First set the points - this is usually safe\n' +
+      '    shapePath.property("ADBE Vector Star Points").setValue(props.points || 5);\n' +
+      '    \n' +
+      '    // Then set the outer radius\n' +
+      '    shapePath.property("ADBE Vector Star Outer Radius").setValue(props.outerRadius || 100);\n' +
+      '    \n' +
+      '    // Set the type (polygon vs star) - do this AFTER setting basic properties\n' +
+      '    if (shapeType === "polygon") {\n' +
+      '      shapePath.property("ADBE Vector Star Type").setValue(1); // 1 = polygon\n' +
+      '    } else {\n' +
+      '      shapePath.property("ADBE Vector Star Type").setValue(2); // 2 = star\n' +
+      '      // Only set inner radius for actual stars\n' +
+      '      shapePath.property("ADBE Vector Star Inner Radius").setValue(props.innerRadius || 50);\n' +
+      '    }\n',
+      '    // If any property fails, continue with defaults\n' +
+      '    // The shape is still created\n'
+    );
     script += '}\n\n';
     
     script += '// Add fill to make the shape visible - add to vectors group\n';
@@ -151,107 +139,88 @@ export const layerGenerators: ScriptGeneratorModule = {
     script += '}\n\n';
     
     script += '// Set transform properties through Transform group for better compatibility\n';
-    script += 'try {\n';
-    script += '  var transform = layer.property("ADBE Transform Group");\n';
-    script += '  if (!transform) {\n';
-    script += '    throw new Error("Could not access transform group");\n';
-    script += '  }\n\n';
+    script += gh.wrapInTryCatch(
+      '  var transform = layer.property("ADBE Transform Group");\n' +
+      '  if (!transform) {\n' +
+      '    throw new Error("Could not access transform group");\n' +
+      '  }\n\n' +
+      '  // Set position with validation\n' +
+      '  var position = props.position || [comp.width/2, comp.height/2];\n' +
+      '  var positionProp = transform.property("ADBE Position");\n' +
+      '  if (positionProp && positionProp.canSetValue) {\n' +
+      '    positionProp.setValue(position);\n' +
+      '  }\n\n' +
+      '  // Set scale - avoid zero scale which can cause issues\n' +
+      '  if (props.scale !== undefined) {\n' +
+      '    var scaleProp = transform.property("ADBE Scale");\n' +
+      '    if (scaleProp && scaleProp.canSetValue) {\n' +
+      '      var scaleValue = props.scale;\n' +
+      '      // Ensure scale is not exactly zero to avoid property access issues\n' +
+      '      if (scaleValue[0] === 0 && scaleValue[1] === 0) {\n' +
+      '        scaleValue = [0.01, 0.01];\n' +
+      '      }\n' +
+      '      scaleProp.setValue(scaleValue);\n' +
+      '    }\n' +
+      '  }\n\n' +
+      '  // Set rotation with validation\n' +
+      '  if (props.rotation !== undefined) {\n' +
+      '    var rotationProp = transform.property("ADBE Rotate Z");\n' +
+      '    if (rotationProp && rotationProp.canSetValue) {\n' +
+      '      rotationProp.setValue(props.rotation);\n' +
+      '    }\n' +
+      '  }\n\n' +
+      '  // Set opacity with validation\n' +
+      '  if (props.opacity !== undefined) {\n' +
+      '    var opacityProp = transform.property("ADBE Opacity");\n' +
+      '    if (opacityProp && opacityProp.canSetValue) {\n' +
+      '      opacityProp.setValue(props.opacity);\n' +
+      '    }\n' +
+      '  }\n',
+      '  // If transform properties fail, layer is still created with defaults\n' +
+      '  // This prevents the entire operation from failing\n'
+    );
+    script += '\n';
     
-    script += '  // Set position with validation\n';
-    script += '  var position = props.position || [comp.width/2, comp.height/2];\n';
-    script += '  var positionProp = transform.property("ADBE Position");\n';
-    script += '  if (positionProp && positionProp.canSetValue) {\n';
-    script += '    positionProp.setValue(position);\n';
-    script += '  }\n\n';
-    
-    script += '  // Set scale - avoid zero scale which can cause issues\n';
-    script += '  if (props.scale !== undefined) {\n';
-    script += '    var scaleProp = transform.property("ADBE Scale");\n';
-    script += '    if (scaleProp && scaleProp.canSetValue) {\n';
-    script += '      var scaleValue = props.scale;\n';
-    script += '      // Ensure scale is not exactly zero to avoid property access issues\n';
-    script += '      if (scaleValue[0] === 0 && scaleValue[1] === 0) {\n';
-    script += '        scaleValue = [0.01, 0.01];\n';
-    script += '      }\n';
-    script += '      scaleProp.setValue(scaleValue);\n';
-    script += '    }\n';
-    script += '  }\n\n';
-    
-    script += '  // Set rotation with validation\n';
-    script += '  if (props.rotation !== undefined) {\n';
-    script += '    var rotationProp = transform.property("ADBE Rotate Z");\n';
-    script += '    if (rotationProp && rotationProp.canSetValue) {\n';
-    script += '      rotationProp.setValue(props.rotation);\n';
-    script += '    }\n';
-    script += '  }\n\n';
-    
-    script += '  // Set opacity with validation\n';
-    script += '  if (props.opacity !== undefined) {\n';
-    script += '    var opacityProp = transform.property("ADBE Opacity");\n';
-    script += '    if (opacityProp && opacityProp.canSetValue) {\n';
-    script += '      opacityProp.setValue(props.opacity);\n';
-    script += '    }\n';
-    script += '  }\n';
-    script += '} catch (e) {\n';
-    script += '  // If transform properties fail, layer is still created with defaults\n';
-    script += '  // This prevents the entire operation from failing\n';
-    script += '}\n\n';
-    
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    index: layer.index,\n    name: layer.name\n  }');
     
     return script;
   },
   
   addNullLayer: (params: { compId: number; name?: string; is3D?: boolean }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
+    
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
     
     script += 'var layer = comp.layers.addNull();\n';
     if (params.name) {
-      script += 'layer.name = "' + helpers.escapeString(params.name) + '";\n';
+      script += gh.setStringProperty('layer', 'name', params.name);
     }
     if (params.is3D) {
       script += 'layer.threeDLayer = true;\n';
     }
     script += '\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    index: layer.index,\n    name: layer.name\n  }');
     
     return script;
   },
   
   addAdjustmentLayer: (params: { compId: number; name?: string }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layers.addSolid([1,1,1], "' + helpers.escapeString(params.name || 'Adjustment Layer') + '", comp.width, comp.height, comp.pixelAspect);\n';
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
+    
+    script += 'var layer = comp.layers.addSolid([1,1,1], ' + 
+      gh.getParamWithDefault(params.name, 'Adjustment Layer') + 
+      ', comp.width, comp.height, comp.pixelAspect);\n';
     script += 'layer.adjustmentLayer = true;\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    index: layer.index,\n    name: layer.name\n  }');
     
     return script;
   },
@@ -267,26 +236,13 @@ export const layerGenerators: ScriptGeneratorModule = {
     };
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer not found");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
-    script += '// Helper function to set property value, handling keyframes\n';
-    script += 'function setPropertyValue(prop, value) {\n';
-    script += '  if (prop.numKeys > 0) {\n';
-    script += '    // Property has keyframes, use setValueAtTime at current comp time\n';
-    script += '    prop.setValueAtTime(comp.time, value);\n';
-    script += '  } else {\n';
-    script += '    // No keyframes, use setValue\n';
-    script += '    prop.setValue(value);\n';
-    script += '  }\n';
-    script += '}\n\n';
+    // Add the setPropertyValue helper function
+    script += gh.getSetPropertyValueHelper();
     
     if (params.properties.position) {
       script += 'var positionProp = layer.property("Position");\n';
@@ -308,81 +264,49 @@ export const layerGenerators: ScriptGeneratorModule = {
       script += 'setPropertyValue(opacityProp, ' + params.properties.opacity + ');\n\n';
     }
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    index: layer.index,\n';
-    script += '    name: layer.name,\n';
-    script += '    modifiedAt: comp.time\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    index: layer.index,\n    name: layer.name,\n    modifiedAt: comp.time\n  }');
     
     return script;
   },
   
   duplicateLayer: (params: { compId: number; layerIndex: number }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer not found");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
     script += 'var duplicated = layer.duplicate();\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    originalIndex: layer.index,\n';
-    script += '    duplicatedIndex: duplicated.index,\n';
-    script += '    name: duplicated.name\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    originalIndex: layer.index,\n    duplicatedIndex: duplicated.index,\n    name: duplicated.name\n  }');
     
     return script;
   },
   
   deleteLayer: (params: { compId: number; layerIndex: number }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer not found");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
     script += 'var layerName = layer.name;\n';
     script += 'layer.remove();\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    deletedLayerName: layerName,\n';
-    script += '    deletedLayerIndex: ' + params.layerIndex + '\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    deletedLayerName: layerName,\n    deletedLayerIndex: ' + params.layerIndex + '\n  }');
     
     return script;
   },
   
   reorderLayers: (params: { compId: number; layerIndex: number; newIndex: number }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer not found");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
     script += '// After Effects uses moveBefore/moveAfter methods\n';
     script += '// If newIndex is less than current, we need to move before\n';
@@ -412,29 +336,18 @@ export const layerGenerators: ScriptGeneratorModule = {
     script += '  }\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerName: layer.name,\n';
-    script += '    oldIndex: currentIndex,\n';
-    script += '    newIndex: layer.index\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    oldIndex: currentIndex,\n    newIndex: layer.index\n  }');
     
     return script;
   },
   
   getLayerInfo: (params: { compId: number; layerIndex: number }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer not found");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
     script += 'var info = {\n';
     script += '  index: layer.index,\n';
@@ -489,10 +402,8 @@ export const layerGenerators: ScriptGeneratorModule = {
     script += '  info.layerType = "null";\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: info\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('info');
     
     return script;
   }

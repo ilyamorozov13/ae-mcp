@@ -89,8 +89,8 @@ describe('Error Fixes Test Suite', () => {
       // Should check if layer is text layer
       expect(script).toContain('if (!(layer instanceof TextLayer))');
       
-      // Should have proper error message with layer type info
-      expect(script).toContain('throw new Error("Layer at index 1 is not a text layer (it is a " + layer.constructor.name + ")");');
+      // Should have proper error message with layer type info (dynamic layer index is better)
+      expect(script).toContain('throw new Error("Layer at index " + layer.index + " is not a text layer (it is a " + layer.constructor.name + ")");');
     });
 
     it('should handle all text properties correctly', () => {
@@ -253,9 +253,12 @@ describe('Error Fixes Test Suite', () => {
         expect(script).not.toMatch(/\b(const|let)\s+/);
         
         // Result object creation - check for ES3 or ES6 style
-        const hasES3Result = script.includes('var result = {};') && 
+        const hasES3Result = (script.includes('var result = {};') && 
                             script.includes('result.success = true;') && 
-                            script.includes('return result;');
+                            script.includes('return result;')) ||
+                            (script.includes('var returnObj = {};') && 
+                            script.includes('returnObj.success = true;') && 
+                            script.includes('return returnObj;'));
         const hasES6Result = script.includes('return {') && 
                             script.includes('success: true');
         expect(hasES3Result || hasES6Result).toBe(true);

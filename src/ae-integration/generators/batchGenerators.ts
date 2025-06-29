@@ -1,5 +1,6 @@
 import { ScriptGeneratorModule } from './types.js';
 import { helpers } from './helpers.js';
+import { generatorHelpers as gh } from './generatorHelpers.js';
 
 export const batchGenerators: ScriptGeneratorModule = {
   batchExecute: (params: { commands: any[], sequential?: boolean }) => {
@@ -10,10 +11,9 @@ export const batchGenerators: ScriptGeneratorModule = {
   
   batchCreateLayers: (params: { compId: number, layers: any[] }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
+    
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
     
     script += 'var results = [];\n';
     script += 'var createdLayers = [];\n';
@@ -72,27 +72,26 @@ export const batchGenerators: ScriptGeneratorModule = {
     script += '            shapePath = contents.addProperty("ADBE Vector Shape - Star");\n';
     script += '            \n';
     script += '            // Set properties in specific order to avoid hidden property issues\n';
-    script += '            try {\n';
-    script += '              // First set the points - this is usually safe\n';
-    script += '              if (props.points) {\n';
-    script += '                shapePath.property("ADBE Vector Star Points").setValue(props.points);\n';
-    script += '              }\n';
-    script += '              \n';
-    script += '              // Then set the outer radius\n';
-    script += '              if (props.outerRadius) {\n';
-    script += '                shapePath.property("ADBE Vector Star Outer Radius").setValue(props.outerRadius);\n';
-    script += '              }\n';
-    script += '              \n';
-    script += '              // Set the type (polygon vs star) - do this AFTER setting basic properties\n';
-    script += '              shapePath.property("ADBE Vector Star Type").setValue(shapeType === "star" ? 2 : 1);\n';
-    script += '              \n';
-    script += '              // Only set inner radius for actual stars\n';
-    script += '              if (shapeType === "star" && props.innerRadius) {\n';
-    script += '                shapePath.property("ADBE Vector Star Inner Radius").setValue(props.innerRadius);\n';
-    script += '              }\n';
-    script += '            } catch (e) {\n';
-    script += '              // If any property fails, continue with defaults\n';
-    script += '            }\n';
+    script += gh.wrapInTryCatch(
+      '              // First set the points - this is usually safe\n' +
+      '              if (props.points) {\n' +
+      '                shapePath.property("ADBE Vector Star Points").setValue(props.points);\n' +
+      '              }\n' +
+      '              \n' +
+      '              // Then set the outer radius\n' +
+      '              if (props.outerRadius) {\n' +
+      '                shapePath.property("ADBE Vector Star Outer Radius").setValue(props.outerRadius);\n' +
+      '              }\n' +
+      '              \n' +
+      '              // Set the type (polygon vs star) - do this AFTER setting basic properties\n' +
+      '              shapePath.property("ADBE Vector Star Type").setValue(shapeType === "star" ? 2 : 1);\n' +
+      '              \n' +
+      '              // Only set inner radius for actual stars\n' +
+      '              if (shapeType === "star" && props.innerRadius) {\n' +
+      '                shapePath.property("ADBE Vector Star Inner Radius").setValue(props.innerRadius);\n' +
+      '              }\n',
+      '              // If any property fails, continue with defaults\n'
+    );
     script += '          }\n';
     script += '          \n';
     script += '          // Add fill\n';
@@ -129,24 +128,23 @@ export const batchGenerators: ScriptGeneratorModule = {
     script += '    // Apply common properties\n';
     script += '    if (layerDef.properties) {\n';
     script += '      var props = layerDef.properties;\n';
-    script += '      try {\n';
-    script += '        if (props.position) layer.property("Position").setValue(props.position);\n';
-    script += '        \n';
-    script += '        // Handle scale with zero-scale protection\n';
-    script += '        if (props.scale) {\n';
-    script += '          var scaleValue = props.scale;\n';
-    script += '          // Avoid exact zero scale which can cause property access issues\n';
-    script += '          if (scaleValue[0] === 0 && scaleValue[1] === 0) {\n';
-    script += '            scaleValue = [0.01, 0.01];\n';
-    script += '          }\n';
-    script += '          layer.property("Scale").setValue(scaleValue);\n';
-    script += '        }\n';
-    script += '        \n';
-    script += '        if (props.rotation !== undefined) layer.property("Rotation").setValue(props.rotation);\n';
-    script += '        if (props.opacity !== undefined) layer.property("Opacity").setValue(props.opacity);\n';
-    script += '      } catch (e) {\n';
-    script += '        // Continue even if some properties fail\n';
-    script += '      }\n';
+    script += gh.wrapInTryCatch(
+      '        if (props.position) layer.property("Position").setValue(props.position);\n' +
+      '        \n' +
+      '        // Handle scale with zero-scale protection\n' +
+      '        if (props.scale) {\n' +
+      '          var scaleValue = props.scale;\n' +
+      '          // Avoid exact zero scale which can cause property access issues\n' +
+      '          if (scaleValue[0] === 0 && scaleValue[1] === 0) {\n' +
+      '            scaleValue = [0.01, 0.01];\n' +
+      '          }\n' +
+      '          layer.property("Scale").setValue(scaleValue);\n' +
+      '        }\n' +
+      '        \n' +
+      '        if (props.rotation !== undefined) layer.property("Rotation").setValue(props.rotation);\n' +
+      '        if (props.opacity !== undefined) layer.property("Opacity").setValue(props.opacity);\n',
+      '        // Continue even if some properties fail\n'
+    );
     script += '    }\n';
     script += '    \n';
     script += '    // Store the layer reference and original index for later\n';
@@ -186,28 +184,23 @@ export const batchGenerators: ScriptGeneratorModule = {
     
     script += 'var successCount = createdLayers.length;\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    total: layers.length,\n';
-    script += '    successful: successCount,\n';
-    script += '    results: results,\n';
-    script += '    layerOrder: "First in array = bottom layer (highest index), Last in array = top layer (index 1)"\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    total: layers.length,\n    successful: successCount,\n    results: results,\n    layerOrder: "First in array = bottom layer (highest index), Last in array = top layer (index 1)"\n  }');
     
     return script;
   },
   
   batchModifyLayerProperties: (params: { compId: number, modifications: any[] }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
+    
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
     
     script += 'var results = [];\n';
     script += 'var modifications = ' + JSON.stringify(params.modifications) + ';\n\n';
+    
+    // Add the setPropertyValue helper function
+    script += gh.getSetPropertyValueHelper();
     
     script += 'for (var i = 0; i < modifications.length; i++) {\n';
     script += '  var mod = modifications[i];\n';
@@ -222,15 +215,6 @@ export const batchGenerators: ScriptGeneratorModule = {
     script += '    }\n';
     script += '    \n';
     script += '    var props = mod.properties;\n';
-    script += '    \n';
-    script += '    // Helper function to set property value\n';
-    script += '    function setPropertyValue(prop, value) {\n';
-    script += '      if (prop.numKeys > 0) {\n';
-    script += '        prop.setValueAtTime(comp.time, value);\n';
-    script += '      } else {\n';
-    script += '        prop.setValue(value);\n';
-    script += '      }\n';
-    script += '    }\n';
     script += '    \n';
     script += '    if (props.position) {\n';
     script += '      setPropertyValue(layer.property("Position"), props.position);\n';
@@ -268,14 +252,8 @@ export const batchGenerators: ScriptGeneratorModule = {
     script += '  if (results[i].success) successCount++;\n';
     script += '}\n\n';
     
-    script += 'return {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    total: modifications.length,\n';
-    script += '    successful: successCount,\n';
-    script += '    results: results\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    total: modifications.length,\n    successful: successCount,\n    results: results\n  }');
     
     return script;
   }

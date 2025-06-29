@@ -1,5 +1,6 @@
 import { ScriptGeneratorModule } from './types.js';
 import { helpers } from './helpers.js';
+import { generatorHelpers as gh } from './generatorHelpers.js';
 
 export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
   applyEffect: (params: {
@@ -8,15 +9,10 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     effectName: string;
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer not found");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
     script += '// Apply the effect\n';
     script += 'var effects = layer.property("Effects");\n';
@@ -28,42 +24,37 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += 'var effectName = "' + helpers.escapeString(params.effectName) + '";\n';
     script += 'var effect = null;\n\n';
     
-    script += 'try {\n';
-    script += '  // Try exact name first\n';
-    script += '  if (effects.canAddProperty(effectName)) {\n';
-    script += '    effect = effects.addProperty(effectName);\n';
-    script += '  } else {\n';
-    script += '    // Try common variations\n';
-    script += '    var variations = [];\n';
-    script += '    if (effectName === "Fast Blur") {\n';
-    script += '      variations = ["Fast Box Blur", "Box Blur", "Gaussian Blur"];\n';
-    script += '    } else if (effectName === "Glow") {\n';
-    script += '      variations = ["Glow", "Glow 2.0"];\n';
-    script += '    }\n';
-    script += '    \n';
-    script += '    for (var i = 0; i < variations.length; i++) {\n';
-    script += '      if (effects.canAddProperty(variations[i])) {\n';
-    script += '        effect = effects.addProperty(variations[i]);\n';
-    script += '        effectName = variations[i];\n';
-    script += '        break;\n';
-    script += '      }\n';
-    script += '    }\n';
-    script += '  }\n';
-    script += '} catch (e) {\n';
-    script += '  throw new Error("Error adding effect \\\\\\"" + effectName + "\\\\\\": " + String(e));\n';
-    script += '}\n\n';
+    script += gh.wrapInTryCatch(
+      '  // Try exact name first\n' +
+      '  if (effects.canAddProperty(effectName)) {\n' +
+      '    effect = effects.addProperty(effectName);\n' +
+      '  } else {\n' +
+      '    // Try common variations\n' +
+      '    var variations = [];\n' +
+      '    if (effectName === "Fast Blur") {\n' +
+      '      variations = ["Fast Box Blur", "Box Blur", "Gaussian Blur"];\n' +
+      '    } else if (effectName === "Glow") {\n' +
+      '      variations = ["Glow", "Glow 2.0"];\n' +
+      '    }\n' +
+      '    \n' +
+      '    for (var i = 0; i < variations.length; i++) {\n' +
+      '      if (effects.canAddProperty(variations[i])) {\n' +
+      '        effect = effects.addProperty(variations[i]);\n' +
+      '        effectName = variations[i];\n' +
+      '        break;\n' +
+      '      }\n' +
+      '    }\n' +
+      '  }\n',
+      '  throw new Error("Error adding effect \\\\\\"" + effectName + "\\\\\\": " + String(e));\n'
+    );
+    script += '\n';
     
     script += 'if (!effect) {\n';
     script += '  throw new Error("Effect \\\\\\"" + effectName + "\\\\\\" not available. Fast Blur has been replaced with Fast Box Blur in newer versions of After Effects.");\n';
     script += '}\n\n';
     
-    script += 'var result = {};\n';
-    script += 'result.success = true;\n';
-    script += 'result.data = {};\n';
-    script += 'result.data.layerName = layer.name;\n';
-    script += 'result.data.effectName = effect.name;\n';
-    script += 'result.data.effectIndex = effect.propertyIndex;\n';
-    script += 'return result;';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    effectName: effect.name,\n    effectIndex: effect.propertyIndex\n  }');
     
     return script;
   },
@@ -77,15 +68,9 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
   }) => {
     let script = '';
     
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
-    
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer not found");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
     script += '// Get time value - use provided time or current comp time\n';
     if (params.time !== undefined && params.time !== null) {
@@ -94,17 +79,9 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
       script += 'var time = comp.time;\n\n';
     }
     
-    script += '// Normalize property name - AE uses specific casing\n';
+    // Use helper for property normalization
     script += 'var propertyName = "' + helpers.escapeString(params.property) + '";\n';
-    script += 'var propertyMap = {\n';
-    script += '  "position": "Position",\n';
-    script += '  "scale": "Scale",\n';
-    script += '  "rotation": "Rotation",\n';
-    script += '  "opacity": "Opacity"\n';
-    script += '};\n\n';
-    
-    script += '// Use mapped name if available, otherwise use as-is\n';
-    script += 'var normalizedProperty = propertyMap[propertyName.toLowerCase()] ? propertyMap[propertyName.toLowerCase()] : propertyName;\n\n';
+    script += gh.normalizePropertyName('propertyName');
     
     script += 'var prop = layer.property(normalizedProperty);\n';
     script += 'if (!prop) {\n';
@@ -130,23 +107,22 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '  \n';
     script += '  // For Time Remap, try multiple access methods\n';
     script += '  if (!prop) {\n';
-    script += '    try {\n';
-    script += '      prop = layer.property("ADBE Time Remapping");\n';
-    script += '    } catch (e) {\n';
-    script += '      try {\n';
-    script += '        prop = layer.property("ADBE Layer Overrides").property("ADBE Time Remapping");\n';
-    script += '      } catch (e2) {\n';
-    script += '        // Search by name as last resort\n';
-    script += '        var numProps = layer.numProperties;\n';
-    script += '        for (var i = 1; i <= numProps; i++) {\n';
-    script += '          var testProp = layer.property(i);\n';
-    script += '          if (testProp && (testProp.name === "Time Remap" || testProp.matchName === "ADBE Time Remapping")) {\n';
-    script += '            prop = testProp;\n';
-    script += '            break;\n';
-    script += '          }\n';
-    script += '        }\n';
-    script += '      }\n';
-    script += '    }\n';
+    script += gh.wrapInTryCatch(
+      '      prop = layer.property("ADBE Time Remapping");\n',
+      '      try {\n' +
+      '        prop = layer.property("ADBE Layer Overrides").property("ADBE Time Remapping");\n' +
+      '      } catch (e2) {\n' +
+      '        // Search by name as last resort\n' +
+      '        var numProps = layer.numProperties;\n' +
+      '        for (var i = 1; i <= numProps; i++) {\n' +
+      '          var testProp = layer.property(i);\n' +
+      '          if (testProp && (testProp.name === "Time Remap" || testProp.matchName === "ADBE Time Remapping")) {\n' +
+      '            prop = testProp;\n' +
+      '            break;\n' +
+      '          }\n' +
+      '        }\n' +
+      '      }\n'
+    );
     script += '  }\n';
     script += '}\n\n';
     
@@ -178,12 +154,7 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '// Validate array values for Position, Scale\n';
     script += 'var arrayProps = ["Position", "Scale"];\n';
     script += 'if (arrayProps.indexOf(normalizedProperty) !== -1) {\n';
-    script += '  if (!(value instanceof Array)) {\n';
-    script += '    throw new Error(normalizedProperty + " requires an array value, got: " + typeof value);\n';
-    script += '  }\n';
-    script += '  if (value.length < 2 || value.length > 3) {\n';
-    script += '    throw new Error(normalizedProperty + " requires 2 or 3 values, got " + value.length + ": [" + value.join(", ") + "]");\n';
-    script += '  }\n';
+    script += gh.validateArrayValue('value', 'normalizedProperty', 2, 3);
     script += '  \n';
     script += '  // Prevent zero scale values\n';
     script += '  if (normalizedProperty === "Scale") {\n';
@@ -196,86 +167,76 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '  }\n';
     script += '}\n\n';
     
-    script += 'try {\n';
-    script += '  // Ensure time is a number\n';
-    script += '  var numTime = parseFloat(time);\n';
-    script += '  if (isNaN(numTime)) {\n';
-    script += '    throw new Error("Time is not a valid number: " + time);\n';
-    script += '  }\n';
-    script += '  \n';
-    script += '  prop.setValueAtTime(numTime, value);\n';
-    script += '} catch (e) {\n';
-    script += '  throw new Error("Failed to set keyframe at time " + time + " with value " + value + ": " + String(e));\n';
-    script += '}\n\n';
-    
-    script += 'var result = {};\n';
-    script += 'result.success = true;\n';
-    script += 'result.data = {};\n';
-    script += 'result.data.property = "' + helpers.escapeString(params.property) + '";\n';
-    script += 'result.data.time = time;\n';
-    script += 'result.data.value = value;\n';
-    script += 'result.data.numKeys = prop.numKeys;\n';
-    script += 'return result;';
+    script += gh.wrapInTryCatch(
+      '  var newKeyIndex = prop.setValueAtTime(time, value);\n' +
+      '  \n' +
+      '  // Prepare result using ES3 compatible object creation\n' +
+      '  var result = {};\n' +
+      '  result.property = normalizedProperty;\n' +
+      '  result.time = time;\n' +
+      '  result.keyIndex = newKeyIndex;\n' +
+      '  result.totalKeys = prop.numKeys;\n' +
+      '  result.value = value;\n' +
+      '  \n' +
+      '  ' + gh.generateSuccessReturn('result') + '\n',
+      '  throw new Error("Failed to set keyframe: " + String(e));\n'
+    );
     
     return script;
   },
   
-  batchKeyframes: (params: { compId: number, keyframes: any[] }) => {
+  batchKeyframes: (params: {
+    compId: number;
+    keyframes: Array<{
+      layerIndex: number;
+      property: string;
+      time: number;
+      value: any;
+    }>;
+  }) => {
     let script = '';
     
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
+    // Use helper for composition validation
+    script += gh.getCompValidation(params.compId);
     
-    script += 'var results = [];\n';
-    script += 'var keyframes = ' + JSON.stringify(params.keyframes) + ';\n\n';
+    script += 'var keyframes = ' + JSON.stringify(params.keyframes) + ';\n';
+    script += 'var results = [];\n\n';
+    
+    // Add property normalization helper
+    script += gh.normalizePropertyName('"dummy"').split('\n').slice(1, -2).join('\n') + '\n\n';
     
     script += 'for (var i = 0; i < keyframes.length; i++) {\n';
     script += '  var kf = keyframes[i];\n';
+    script += '  \n';
     script += '  try {\n';
     script += '    var layer = comp.layer(kf.layerIndex);\n';
     script += '    if (!layer) {\n';
-    script += '      results.push({success: false, error: "Layer " + kf.layerIndex + " not found"});\n';
-    script += '      continue;\n';
+    script += '      throw new Error("Layer " + kf.layerIndex + " not found");\n';
     script += '    }\n';
     script += '    \n';
-    script += '    // Property name normalization\n';
-    script += '    var propertyMap = {\n';
-    script += '      "position": "Position",\n';
-    script += '      "scale": "Scale",\n';
-    script += '      "rotation": "Rotation",\n';
-    script += '      "opacity": "Opacity"\n';
-    script += '    };\n';
-    script += '    var propName = propertyMap[kf.property.toLowerCase()] ? propertyMap[kf.property.toLowerCase()] : kf.property;\n';
+    script += '    // Use normalized property name\n';
+    script += '    var normalizedProperty = propertyMap[kf.property.toLowerCase()] || kf.property;\n';
     script += '    \n';
-    script += '    var prop = layer.property(propName);\n';
+    script += '    var prop = layer.property(normalizedProperty);\n';
     script += '    if (!prop) {\n';
-    script += '      // Try under Transform\n';
-    script += '      var transform = layer.property("Transform");\n';
-    script += '      if (transform) {\n';
-    script += '        prop = transform.property(propName);\n';
-    script += '      }\n';
+    script += '      throw new Error("Property " + normalizedProperty + " not found on layer " + kf.layerIndex);\n';
     script += '    }\n';
     script += '    \n';
-    script += '    if (!prop) {\n';
-    script += '      results.push({success: false, error: "Property " + propName + " not found on layer " + kf.layerIndex});\n';
-    script += '      continue;\n';
-    script += '    }\n';
+    script += '    prop.setValueAtTime(kf.time, kf.value);\n';
     script += '    \n';
-    script += '    // Fix zero scale values\n';
-    script += '    var value = kf.value;\n';
-    script += '    if (propName === "Scale" && value instanceof Array) {\n';
-    script += '      for (var j = 0; j < value.length; j++) {\n';
-    script += '        if (value[j] === 0) value[j] = 0.1;\n';
-    script += '      }\n';
-    script += '    }\n';
-    script += '    \n';
-    script += '    prop.setValueAtTime(kf.time, value);\n';
-    script += '    results.push({success: true, layer: kf.layerIndex, property: propName, time: kf.time});\n';
-    script += '    \n';
+    script += '    results.push({\n';
+    script += '      success: true,\n';
+    script += '      layerIndex: kf.layerIndex,\n';
+    script += '      property: normalizedProperty,\n';
+    script += '      time: kf.time\n';
+    script += '    });\n';
     script += '  } catch (e) {\n';
-    script += '    results.push({success: false, error: String(e), layer: kf.layerIndex});\n';
+    script += '    results.push({\n';
+    script += '      success: false,\n';
+    script += '      layerIndex: kf.layerIndex,\n';
+    script += '      property: kf.property,\n';
+    script += '      error: String(e)\n';
+    script += '    });\n';
     script += '  }\n';
     script += '}\n\n';
     
@@ -284,13 +245,54 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '  if (results[i].success) successCount++;\n';
     script += '}\n\n';
     
-    script += 'var result = {};\n';
-    script += 'result.success = true;\n';
-    script += 'result.data = {};\n';
-    script += 'result.data.total = keyframes.length;\n';
-    script += 'result.data.successful = successCount;\n';
-    script += 'result.data.results = results;\n';
-    script += 'return result;';
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    total: keyframes.length,\n    successful: successCount,\n    results: results\n  }');
+    
+    return script;
+  },
+  
+  animateTimeRemap: (params: {
+    compId: number;
+    layerIndex: number;
+    keyframes: Array<{ time: number; value: number }>;
+    clearExisting?: boolean;
+  }) => {
+    let script = '';
+    
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
+    
+    script += '// Check if layer is an AVLayer (required for time remapping)\n';
+    script += gh.validateLayerType('AVLayer', 'Layer does not support time remapping');
+    
+    script += '// Enable time remapping if not already enabled\n';
+    script += 'if (!layer.timeRemapEnabled) {\n';
+    script += '  layer.timeRemapEnabled = true;\n';
+    script += '}\n\n';
+    
+    script += '// Get time remap property\n';
+    script += 'var timeRemap = layer.property("Time Remap");\n';
+    script += 'if (!timeRemap) {\n';
+    script += '  throw new Error("Could not access Time Remap property");\n';
+    script += '}\n\n';
+    
+    script += '// Clear existing keyframes if requested\n';
+    if (params.clearExisting !== false) {
+      script += 'while (timeRemap.numKeys > 0) {\n';
+      script += '  timeRemap.removeKey(1);\n';
+      script += '}\n\n';
+    }
+    
+    script += '// Add keyframes\n';
+    script += 'var keyframes = ' + JSON.stringify(params.keyframes) + ';\n';
+    script += 'for (var i = 0; i < keyframes.length; i++) {\n';
+    script += '  var kf = keyframes[i];\n';
+    script += '  timeRemap.setValueAtTime(kf.time, kf.value);\n';
+    script += '}\n\n';
+    
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    keyframesAdded: keyframes.length,\n    totalKeyframes: timeRemap.numKeys\n  }');
     
     return script;
   }

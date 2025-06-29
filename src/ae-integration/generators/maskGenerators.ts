@@ -1,5 +1,6 @@
 import { ScriptGeneratorModule } from './types.js';
 import { helpers } from './helpers.js';
+import { generatorHelpers as gh } from './generatorHelpers.js';
 
 export const maskGenerators: ScriptGeneratorModule = {
   addMask: (params: {
@@ -14,73 +15,36 @@ export const maskGenerators: ScriptGeneratorModule = {
     };
   }) => {
     let script = '';
-    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
-    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
-    script += '  throw new Error("Composition not found");\n';
-    script += '}\n\n';
     
-    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
-    script += 'if (!layer) {\n';
-    script += '  throw new Error("Layer not found");\n';
-    script += '}\n\n';
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
     script += 'var mask = layer.property("Masks").addProperty("Mask");\n';
     if (params.name) {
-      script += 'mask.name = "' + helpers.escapeString(params.name) + '";\n';
+      script += gh.setStringProperty('mask', 'name', params.name);
     }
     script += '\n';
     
     if (params.maskShape) {
       script += 'var shape = new Shape();\n';
-      script += 'shape.vertices = [\n';
-      for (let i = 0; i < params.maskShape.vertices.length; i++) {
-        const vertex = params.maskShape.vertices[i];
-        script += '  [' + vertex[0] + ', ' + vertex[1] + ']';
-        if (i < params.maskShape.vertices.length - 1) {
-          script += ',';
-        }
-        script += '\n';
-      }
-      script += '];\n';
+      script += 'shape.vertices = ' + JSON.stringify(params.maskShape.vertices) + ';\n';
       
       if (params.maskShape.inTangents) {
-        script += 'shape.inTangents = [\n';
-        for (let i = 0; i < params.maskShape.inTangents.length; i++) {
-          const tangent = params.maskShape.inTangents[i];
-          script += '  [' + tangent[0] + ', ' + tangent[1] + ']';
-          if (i < params.maskShape.inTangents.length - 1) {
-            script += ',';
-          }
-          script += '\n';
-        }
-        script += '];\n';
+        script += 'shape.inTangents = ' + JSON.stringify(params.maskShape.inTangents) + ';\n';
       }
       
       if (params.maskShape.outTangents) {
-        script += 'shape.outTangents = [\n';
-        for (let i = 0; i < params.maskShape.outTangents.length; i++) {
-          const tangent = params.maskShape.outTangents[i];
-          script += '  [' + tangent[0] + ', ' + tangent[1] + ']';
-          if (i < params.maskShape.outTangents.length - 1) {
-            script += ',';
-          }
-          script += '\n';
-        }
-        script += '];\n';
+        script += 'shape.outTangents = ' + JSON.stringify(params.maskShape.outTangents) + ';\n';
       }
       
       script += 'shape.closed = ' + (params.maskShape.closed !== false) + ';\n\n';
       script += 'mask.property("Mask Path").setValue(shape);\n';
     }
     
-    script += '\nreturn {\n';
-    script += '  success: true,\n';
-    script += '  data: {\n';
-    script += '    layerName: layer.name,\n';
-    script += '    maskIndex: mask.propertyIndex,\n';
-    script += '    maskName: mask.name\n';
-    script += '  }\n';
-    script += '};';
+    // Use helper for return value
+    script += '\n';
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    maskIndex: mask.propertyIndex,\n    maskName: mask.name\n  }');
     
     return script;
   },
@@ -96,90 +60,85 @@ export const maskGenerators: ScriptGeneratorModule = {
       height: number;
     };
     roundness?: number;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
+    
+    script += 'var mask = layer.property("Masks").addProperty("Mask");\n';
+    if (params.name) {
+      script += gh.setStringProperty('mask', 'name', params.name);
     }
+    script += '\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var bounds = ' + JSON.stringify(params.bounds) + ';\n';
+    script += 'var roundness = ' + (params.roundness || 0) + ';\n\n';
     
-    var mask = layer.property("Masks").addProperty("Mask");
-    ${params.name ? `mask.name = "${helpers.escapeString(params.name)}";` : ''}
+    script += '// Calculate vertices for rectangle\n';
+    script += 'var left = bounds.left;\n';
+    script += 'var top = bounds.top;\n';
+    script += 'var right = left + bounds.width;\n';
+    script += 'var bottom = top + bounds.height;\n\n';
     
-    var bounds = ${JSON.stringify(params.bounds)};
-    var roundness = ${params.roundness || 0};
+    script += 'var shape = new Shape();\n\n';
     
-    // Calculate vertices for rectangle
-    var left = bounds.left;
-    var top = bounds.top;
-    var right = left + bounds.width;
-    var bottom = top + bounds.height;
+    script += 'if (roundness > 0) {\n';
+    script += '  // Create rounded rectangle with bezier curves\n';
+    script += '  var r = Math.min(roundness, bounds.width / 2, bounds.height / 2);\n';
+    script += '  var c = r * 0.552284749831; // Bezier constant for circle approximation\n\n';
     
-    var shape = new Shape();
+    script += '  shape.vertices = [\n';
+    script += '    [left + r, top],\n';
+    script += '    [right - r, top],\n';
+    script += '    [right, top + r],\n';
+    script += '    [right, bottom - r],\n';
+    script += '    [right - r, bottom],\n';
+    script += '    [left + r, bottom],\n';
+    script += '    [left, bottom - r],\n';
+    script += '    [left, top + r]\n';
+    script += '  ];\n\n';
     
-    if (roundness > 0) {
-      // Create rounded rectangle with bezier curves
-      var r = Math.min(roundness, bounds.width / 2, bounds.height / 2);
-      var c = r * 0.552284749831; // Bezier constant for circle approximation
-      
-      shape.vertices = [
-        [left + r, top],
-        [right - r, top],
-        [right, top + r],
-        [right, bottom - r],
-        [right - r, bottom],
-        [left + r, bottom],
-        [left, bottom - r],
-        [left, top + r]
-      ];
-      
-      shape.inTangents = [
-        [-c, 0],
-        [0, 0],
-        [0, -c],
-        [0, 0],
-        [c, 0],
-        [0, 0],
-        [0, c],
-        [0, 0]
-      ];
-      
-      shape.outTangents = [
-        [0, 0],
-        [c, 0],
-        [0, 0],
-        [0, c],
-        [0, 0],
-        [-c, 0],
-        [0, 0],
-        [0, -c]
-      ];
-    } else {
-      // Simple rectangle
-      shape.vertices = [
-        [left, top],
-        [right, top],
-        [right, bottom],
-        [left, bottom]
-      ];
-    }
+    script += '  shape.inTangents = [\n';
+    script += '    [-c, 0],\n';
+    script += '    [0, 0],\n';
+    script += '    [0, -c],\n';
+    script += '    [0, 0],\n';
+    script += '    [c, 0],\n';
+    script += '    [0, 0],\n';
+    script += '    [0, c],\n';
+    script += '    [0, 0]\n';
+    script += '  ];\n\n';
     
-    shape.closed = true;
-    mask.property("Mask Path").setValue(shape);
+    script += '  shape.outTangents = [\n';
+    script += '    [0, 0],\n';
+    script += '    [c, 0],\n';
+    script += '    [0, 0],\n';
+    script += '    [0, c],\n';
+    script += '    [0, 0],\n';
+    script += '    [-c, 0],\n';
+    script += '    [0, 0],\n';
+    script += '    [0, -c]\n';
+    script += '  ];\n';
+    script += '} else {\n';
+    script += '  // Simple rectangle\n';
+    script += '  shape.vertices = [\n';
+    script += '    [left, top],\n';
+    script += '    [right, top],\n';
+    script += '    [right, bottom],\n';
+    script += '    [left, bottom]\n';
+    script += '  ];\n';
+    script += '}\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        maskIndex: mask.propertyIndex,
-        maskName: mask.name
-      }
-    };
-  `,
+    script += 'shape.closed = true;\n';
+    script += 'mask.property("Mask Path").setValue(shape);\n\n';
+    
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    maskIndex: mask.propertyIndex,\n    maskName: mask.name\n  }');
+    
+    return script;
+  },
 
   addEllipticalMask: (params: {
     compId: number;
@@ -187,66 +146,61 @@ export const maskGenerators: ScriptGeneratorModule = {
     name?: string;
     center: number[];
     radius: number[];
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
+    
+    script += 'var mask = layer.property("Masks").addProperty("Mask");\n';
+    if (params.name) {
+      script += gh.setStringProperty('mask', 'name', params.name);
     }
+    script += '\n';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    script += 'var center = [' + params.center.join(',') + '];\n';
+    script += 'var radius = [' + params.radius.join(',') + '];\n\n';
     
-    var mask = layer.property("Masks").addProperty("Mask");
-    ${params.name ? `mask.name = "${helpers.escapeString(params.name)}";` : ''}
+    script += '// Create ellipse using bezier curves\n';
+    script += 'var rx = radius[0];\n';
+    script += 'var ry = radius[1];\n';
+    script += 'var cx = center[0];\n';
+    script += 'var cy = center[1];\n\n';
     
-    var center = [${params.center.join(',')}];
-    var radius = [${params.radius.join(',')}];
+    script += '// Bezier constant for circle approximation\n';
+    script += 'var c = 0.552284749831;\n\n';
     
-    // Create ellipse using bezier curves
-    var rx = radius[0];
-    var ry = radius[1];
-    var cx = center[0];
-    var cy = center[1];
+    script += 'var shape = new Shape();\n';
+    script += 'shape.vertices = [\n';
+    script += '  [cx + rx, cy],\n';
+    script += '  [cx, cy + ry],\n';
+    script += '  [cx - rx, cy],\n';
+    script += '  [cx, cy - ry]\n';
+    script += '];\n\n';
     
-    // Bezier constant for circle approximation
-    var c = 0.552284749831;
+    script += 'shape.inTangents = [\n';
+    script += '  [0, -ry * c],\n';
+    script += '  [rx * c, 0],\n';
+    script += '  [0, ry * c],\n';
+    script += '  [-rx * c, 0]\n';
+    script += '];\n\n';
     
-    var shape = new Shape();
-    shape.vertices = [
-      [cx + rx, cy],
-      [cx, cy + ry],
-      [cx - rx, cy],
-      [cx, cy - ry]
-    ];
+    script += 'shape.outTangents = [\n';
+    script += '  [0, ry * c],\n';
+    script += '  [-rx * c, 0],\n';
+    script += '  [0, -ry * c],\n';
+    script += '  [rx * c, 0]\n';
+    script += '];\n\n';
     
-    shape.inTangents = [
-      [0, -ry * c],
-      [rx * c, 0],
-      [0, ry * c],
-      [-rx * c, 0]
-    ];
+    script += 'shape.closed = true;\n';
+    script += 'mask.property("Mask Path").setValue(shape);\n\n';
     
-    shape.outTangents = [
-      [0, ry * c],
-      [-rx * c, 0],
-      [0, -ry * c],
-      [rx * c, 0]
-    ];
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    maskIndex: mask.propertyIndex,\n    maskName: mask.name\n  }');
     
-    shape.closed = true;
-    mask.property("Mask Path").setValue(shape);
-    
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        maskIndex: mask.propertyIndex,
-        maskName: mask.name
-      }
-    };
-  `,
+    return script;
+  },
 
   modifyMaskPath: (params: {
     compId: number;
@@ -259,46 +213,44 @@ export const maskGenerators: ScriptGeneratorModule = {
       closed?: boolean;
     };
     setKeyframe?: boolean;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
+    
+    script += 'var mask = layer.property("Masks").property(' + params.maskIndex + ');\n';
+    script += 'if (!mask) {\n';
+    script += '  throw new Error("Mask not found");\n';
+    script += '}\n\n';
+    
+    script += 'var shape = new Shape();\n';
+    script += 'shape.vertices = ' + JSON.stringify(params.maskShape.vertices) + ';\n';
+    
+    if (params.maskShape.inTangents) {
+      script += 'shape.inTangents = ' + JSON.stringify(params.maskShape.inTangents) + ';\n';
     }
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
+    if (params.maskShape.outTangents) {
+      script += 'shape.outTangents = ' + JSON.stringify(params.maskShape.outTangents) + ';\n';
     }
     
-    var mask = layer.property("Masks").property(${params.maskIndex});
-    if (!mask) {
-      throw new Error("Mask not found");
+    script += 'shape.closed = ' + (params.maskShape.closed !== false) + ';\n\n';
+    script += 'var maskPath = mask.property("Mask Path");\n\n';
+    
+    if (params.setKeyframe) {
+      script += 'maskPath.setValueAtTime(comp.time, shape);\n';
+    } else {
+      script += 'maskPath.setValue(shape);\n';
     }
+    script += '\n';
     
-    var shape = new Shape();
-    shape.vertices = ${JSON.stringify(params.maskShape.vertices)};
-    ${params.maskShape.inTangents ? `shape.inTangents = ${JSON.stringify(params.maskShape.inTangents)};` : ''}
-    ${params.maskShape.outTangents ? `shape.outTangents = ${JSON.stringify(params.maskShape.outTangents)};` : ''}
-    shape.closed = ${params.maskShape.closed !== false};
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    maskIndex: ' + params.maskIndex + ',\n    maskName: mask.name,\n    keyframeSet: ' + (params.setKeyframe ? 'true' : 'false') + '\n  }');
     
-    var maskPath = mask.property("Mask Path");
-    
-    ${params.setKeyframe ? `
-      maskPath.setValueAtTime(comp.time, shape);
-    ` : `
-      maskPath.setValue(shape);
-    `}
-    
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        maskIndex: ${params.maskIndex},
-        maskName: mask.name,
-        keyframeSet: ${params.setKeyframe ? 'true' : 'false'}
-      }
-    };
-  `,
+    return script;
+  },
 
   setMaskProperties: (params: {
     compId: number;
@@ -312,160 +264,132 @@ export const maskGenerators: ScriptGeneratorModule = {
       maskExpansion?: number;
       locked?: boolean;
     };
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
+    
+    script += 'var mask = layer.property("Masks").property(' + params.maskIndex + ');\n';
+    script += 'if (!mask) {\n';
+    script += '  throw new Error("Mask not found");\n';
+    script += '}\n\n';
+    
+    script += 'var props = ' + JSON.stringify(params.properties) + ';\n\n';
+    
+    if (params.properties.maskMode) {
+      script += 'var modeMap = {\n';
+      script += '  "none": MaskMode.NONE,\n';
+      script += '  "add": MaskMode.ADD,\n';
+      script += '  "subtract": MaskMode.SUBTRACT,\n';
+      script += '  "intersect": MaskMode.INTERSECT,\n';
+      script += '  "lighten": MaskMode.LIGHTEN,\n';
+      script += '  "darken": MaskMode.DARKEN,\n';
+      script += '  "difference": MaskMode.DIFFERENCE\n';
+      script += '};\n';
+      script += 'var mode = modeMap[props.maskMode];\n';
+      script += 'if (mode !== undefined) {\n';
+      script += '  mask.maskMode = mode;\n';
+      script += '}\n\n';
     }
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
+    if (params.properties.inverted !== undefined) {
+      script += 'mask.inverted = ' + params.properties.inverted + ';\n';
     }
     
-    var mask = layer.property("Masks").property(${params.maskIndex});
-    if (!mask) {
-      throw new Error("Mask not found");
+    if (params.properties.maskFeather) {
+      script += 'mask.property("Mask Feather").setValue([' + params.properties.maskFeather.join(',') + ']);\n';
     }
     
-    var props = ${JSON.stringify(params.properties)};
+    if (params.properties.maskOpacity !== undefined) {
+      script += 'mask.property("Mask Opacity").setValue(' + params.properties.maskOpacity + ');\n';
+    }
     
-    ${params.properties.maskMode ? `
-      var modeMap = {
-        "none": MaskMode.NONE,
-        "add": MaskMode.ADD,
-        "subtract": MaskMode.SUBTRACT,
-        "intersect": MaskMode.INTERSECT,
-        "lighten": MaskMode.LIGHTEN,
-        "darken": MaskMode.DARKEN,
-        "difference": MaskMode.DIFFERENCE
-      };
-      var mode = modeMap[props.maskMode];
-      if (mode !== undefined) {
-        mask.maskMode = mode;
-      }
-    ` : ''}
+    if (params.properties.maskExpansion !== undefined) {
+      script += 'mask.property("Mask Expansion").setValue(' + params.properties.maskExpansion + ');\n';
+    }
     
-    ${params.properties.inverted !== undefined ? `mask.inverted = ${params.properties.inverted};` : ''}
-    ${params.properties.maskFeather ? `mask.property("Mask Feather").setValue([${params.properties.maskFeather.join(',')}]);` : ''}
-    ${params.properties.maskOpacity !== undefined ? `mask.property("Mask Opacity").setValue(${params.properties.maskOpacity});` : ''}
-    ${params.properties.maskExpansion !== undefined ? `mask.property("Mask Expansion").setValue(${params.properties.maskExpansion});` : ''}
-    ${params.properties.locked !== undefined ? `mask.locked = ${params.properties.locked};` : ''}
+    if (params.properties.locked !== undefined) {
+      script += 'mask.locked = ' + params.properties.locked + ';\n';
+    }
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        maskIndex: ${params.maskIndex},
-        maskName: mask.name
-      }
-    };
-  `,
+    script += '\n';
+    
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    maskIndex: ' + params.maskIndex + ',\n    maskName: mask.name\n  }');
+    
+    return script;
+  },
 
   deleteMask: (params: {
     compId: number;
     layerIndex: number;
     maskIndex: number;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
-    var masks = layer.property("Masks");
-    var mask = masks.property(${params.maskIndex});
-    if (!mask) {
-      throw new Error("Mask not found");
-    }
+    script += 'var masks = layer.property("Masks");\n';
+    script += 'var mask = masks.property(' + params.maskIndex + ');\n';
+    script += 'if (!mask) {\n';
+    script += '  throw new Error("Mask not found");\n';
+    script += '}\n\n';
     
-    var maskName = mask.name;
-    mask.remove();
+    script += 'var maskName = mask.name;\n';
+    script += 'mask.remove();\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        deletedMaskIndex: ${params.maskIndex},
-        deletedMaskName: maskName
-      }
-    };
-  `,
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    deletedMaskIndex: ' + params.maskIndex + ',\n    deletedMaskName: maskName\n  }');
+    
+    return script;
+  },
 
   getMaskInfo: (params: {
     compId: number;
     layerIndex: number;
     maskIndex?: number;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
+  }) => {
+    let script = '';
+    
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
+    
+    script += 'var masks = layer.property("Masks");\n\n';
+    
+    if (params.maskIndex) {
+      script += 'var mask = masks.property(' + params.maskIndex + ');\n';
+      script += 'if (!mask) {\n';
+      script += '  throw new Error("Mask not found");\n';
+      script += '}\n\n';
+      
+      script += 'var shape = mask.property("Mask Path").value;\n\n';
+      
+      // Use helper for return value
+      script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    mask: {\n      index: ' + params.maskIndex + ',\n      name: mask.name,\n      locked: mask.locked,\n      inverted: mask.inverted,\n      maskMode: mask.maskMode,\n      shape: {\n        vertices: shape.vertices,\n        inTangents: shape.inTangents,\n        outTangents: shape.outTangents,\n        closed: shape.closed\n      },\n      feather: mask.property("Mask Feather").value,\n      opacity: mask.property("Mask Opacity").value,\n      expansion: mask.property("Mask Expansion").value\n    }\n  }');
+    } else {
+      script += 'var maskList = [];\n';
+      script += 'for (var i = 1; i <= masks.numProperties; i++) {\n';
+      script += '  var mask = masks.property(i);\n';
+      script += '  maskList.push({\n';
+      script += '    index: i,\n';
+      script += '    name: mask.name,\n';
+      script += '    locked: mask.locked,\n';
+      script += '    inverted: mask.inverted,\n';
+      script += '    maskMode: mask.maskMode\n';
+      script += '  });\n';
+      script += '}\n\n';
+      
+      // Use helper for return value
+      script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    numMasks: masks.numProperties,\n    masks: maskList\n  }');
     }
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
-    
-    var masks = layer.property("Masks");
-    
-    ${params.maskIndex ? `
-      var mask = masks.property(${params.maskIndex});
-      if (!mask) {
-        throw new Error("Mask not found");
-      }
-      
-      var shape = mask.property("Mask Path").value;
-      
-      return {
-        success: true,
-        data: {
-          layerName: layer.name,
-          mask: {
-            index: ${params.maskIndex},
-            name: mask.name,
-            locked: mask.locked,
-            inverted: mask.inverted,
-            maskMode: mask.maskMode,
-            shape: {
-              vertices: shape.vertices,
-              inTangents: shape.inTangents,
-              outTangents: shape.outTangents,
-              closed: shape.closed
-            },
-            feather: mask.property("Mask Feather").value,
-            opacity: mask.property("Mask Opacity").value,
-            expansion: mask.property("Mask Expansion").value
-          }
-        }
-      };
-    ` : `
-      var maskList = [];
-      for (var i = 1; i <= masks.numProperties; i++) {
-        var mask = masks.property(i);
-        maskList.push({
-          index: i,
-          name: mask.name,
-          locked: mask.locked,
-          inverted: mask.inverted,
-          maskMode: mask.maskMode
-        });
-      }
-      
-      return {
-        success: true,
-        data: {
-          layerName: layer.name,
-          numMasks: masks.numProperties,
-          masks: maskList
-        }
-      };
-    `}
-  `,
+    return script;
+  },
 
   animateMaskPath: (params: {
     compId: number;
@@ -479,46 +403,36 @@ export const maskGenerators: ScriptGeneratorModule = {
         outTangents?: number[][];
       };
     }>;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
     
-    var layer = comp.layer(${params.layerIndex});
-    if (!layer) {
-      throw new Error("Layer not found");
-    }
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
+    script += gh.getLayerValidation(params.layerIndex);
     
-    var mask = layer.property("Masks").property(${params.maskIndex});
-    if (!mask) {
-      throw new Error("Mask not found");
-    }
+    script += 'var mask = layer.property("Masks").property(' + params.maskIndex + ');\n';
+    script += 'if (!mask) {\n';
+    script += '  throw new Error("Mask not found");\n';
+    script += '}\n\n';
     
-    var maskPath = mask.property("Mask Path");
-    var keyframes = ${JSON.stringify(params.keyframes)};
+    script += 'var maskPath = mask.property("Mask Path");\n';
+    script += 'var keyframes = ' + JSON.stringify(params.keyframes) + ';\n\n';
     
-    for (var i = 0; i < keyframes.length; i++) {
-      var kf = keyframes[i];
-      var shape = new Shape();
-      shape.vertices = kf.maskShape.vertices;
-      shape.inTangents = kf.maskShape.inTangents || [];
-      shape.outTangents = kf.maskShape.outTangents || [];
-      shape.closed = true;
-      
-      maskPath.setValueAtTime(kf.time, shape);
-    }
+    script += 'for (var i = 0; i < keyframes.length; i++) {\n';
+    script += '  var kf = keyframes[i];\n';
+    script += '  var shape = new Shape();\n';
+    script += '  shape.vertices = kf.maskShape.vertices;\n';
+    script += '  shape.inTangents = kf.maskShape.inTangents || [];\n';
+    script += '  shape.outTangents = kf.maskShape.outTangents || [];\n';
+    script += '  shape.closed = true;\n\n';
+    script += '  maskPath.setValueAtTime(kf.time, shape);\n';
+    script += '}\n\n';
     
-    return {
-      success: true,
-      data: {
-        layerName: layer.name,
-        maskIndex: ${params.maskIndex},
-        maskName: mask.name,
-        keyframesSet: keyframes.length
-      }
-    };
-  `,
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    layerName: layer.name,\n    maskIndex: ' + params.maskIndex + ',\n    maskName: mask.name,\n    keyframesSet: keyframes.length\n  }');
+    
+    return script;
+  },
 
   convertMaskToShape: (params: {
     compId: number;
@@ -526,65 +440,60 @@ export const maskGenerators: ScriptGeneratorModule = {
     maskIndex: number;
     createNewLayer?: boolean;
     targetLayerIndex?: number;
-  }) => `
-    var comp = app.project.itemByID(${params.compId});
-    if (!comp || !(comp instanceof CompItem)) {
-      throw new Error("Composition not found");
-    }
+  }) => {
+    let script = '';
     
-    var sourceLayer = comp.layer(${params.layerIndex});
-    if (!sourceLayer) {
-      throw new Error("Source layer not found");
-    }
+    // Use helpers for validation
+    script += gh.getCompValidation(params.compId);
     
-    var mask = sourceLayer.property("Masks").property(${params.maskIndex});
-    if (!mask) {
-      throw new Error("Mask not found");
-    }
+    script += 'var sourceLayer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!sourceLayer) {\n';
+    script += '  throw new Error("Source layer not found");\n';
+    script += '}\n\n';
     
-    // Get mask path shape
-    var maskPath = mask.property("Mask Path");
-    var shape = maskPath.value;
+    script += 'var mask = sourceLayer.property("Masks").property(' + params.maskIndex + ');\n';
+    script += 'if (!mask) {\n';
+    script += '  throw new Error("Mask not found");\n';
+    script += '}\n\n';
     
-    var targetLayer;
+    script += '// Get mask path shape\n';
+    script += 'var maskPath = mask.property("Mask Path");\n';
+    script += 'var shape = maskPath.value;\n\n';
     
-    ${params.createNewLayer !== false ? `
-      // Create new shape layer
-      targetLayer = comp.layers.addShape();
-      targetLayer.name = sourceLayer.name + " - " + mask.name + " Shape";
+    script += 'var targetLayer;\n\n';
+    
+    if (params.createNewLayer !== false) {
+      script += '// Create new shape layer\n';
+      script += 'targetLayer = comp.layers.addShape();\n';
+      script += 'targetLayer.name = sourceLayer.name + " - " + mask.name + " Shape";\n\n';
       
-      // Match transform
-      targetLayer.property("Position").setValue(sourceLayer.property("Position").value);
-      targetLayer.property("Scale").setValue(sourceLayer.property("Scale").value);
-      targetLayer.property("Rotation").setValue(sourceLayer.property("Rotation").value);
-    ` : `
-      // Add to existing shape layer
-      targetLayer = comp.layer(${params.targetLayerIndex});
-      if (!targetLayer || !(targetLayer instanceof ShapeLayer)) {
-        throw new Error("Target must be a shape layer");
-      }
-    `}
+      script += '// Match transform\n';
+      script += 'targetLayer.property("Position").setValue(sourceLayer.property("Position").value);\n';
+      script += 'targetLayer.property("Scale").setValue(sourceLayer.property("Scale").value);\n';
+      script += 'targetLayer.property("Rotation").setValue(sourceLayer.property("Rotation").value);\n\n';
+    } else {
+      script += '// Add to existing shape layer\n';
+      script += 'targetLayer = comp.layer(' + (params.targetLayerIndex || 1) + ');\n';
+      script += 'if (!targetLayer || !(targetLayer instanceof ShapeLayer)) {\n';
+      script += '  throw new Error("Target must be a shape layer");\n';
+      script += '}\n\n';
+    }
     
-    // Add shape path to shape layer
-    var contents = targetLayer.property("ADBE Root Vectors Group");
-    var shapeGroup = contents.addProperty("ADBE Vector Group");
-    shapeGroup.name = mask.name + " Path";
+    script += '// Add shape path to shape layer\n';
+    script += 'var contents = targetLayer.property("ADBE Root Vectors Group");\n';
+    script += 'var shapeGroup = contents.addProperty("ADBE Vector Group");\n';
+    script += 'shapeGroup.name = mask.name + " Path";\n\n';
     
-    var shapePath = shapeGroup.property("ADBE Vectors Group").addProperty("ADBE Vector Shape - Group");
-    shapePath.property("ADBE Vector Shape").setValue(shape);
+    script += 'var shapePath = shapeGroup.property("ADBE Vectors Group").addProperty("ADBE Vector Shape - Group");\n';
+    script += 'shapePath.property("ADBE Vector Shape").setValue(shape);\n\n';
     
-    // Add fill
-    var fill = shapeGroup.property("ADBE Vectors Group").addProperty("ADBE Vector Graphic - Fill");
-    fill.property("ADBE Vector Fill Color").setValue([1, 1, 1]);
+    script += '// Add fill\n';
+    script += 'var fill = shapeGroup.property("ADBE Vectors Group").addProperty("ADBE Vector Graphic - Fill");\n';
+    script += 'fill.property("ADBE Vector Fill Color").setValue([1, 1, 1]);\n\n';
     
-    return {
-      success: true,
-      data: {
-        sourceLayerName: sourceLayer.name,
-        targetLayerName: targetLayer.name,
-        targetLayerIndex: targetLayer.index,
-        maskName: mask.name
-      }
-    };
-  `
+    // Use helper for return value
+    script += gh.generateSuccessReturn('{\n    sourceLayerName: sourceLayer.name,\n    targetLayerName: targetLayer.name,\n    targetLayerIndex: targetLayer.index,\n    maskName: mask.name\n  }');
+    
+    return script;
+  }
 };
