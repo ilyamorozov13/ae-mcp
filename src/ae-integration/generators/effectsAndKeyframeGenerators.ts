@@ -50,11 +50,11 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '    }\n';
     script += '  }\n';
     script += '} catch (e) {\n';
-    script += '  throw new Error("Error adding effect \\"" + effectName + "\\": " + String(e));\n';
+    script += '  throw new Error("Error adding effect \\\\\\"" + effectName + "\\\\\\": " + String(e));\n';
     script += '}\n\n';
     
     script += 'if (!effect) {\n';
-    script += '  throw new Error("Effect \\"" + effectName + "\\" not available. Fast Blur has been replaced with Fast Box Blur in newer versions of After Effects.");\n';
+    script += '  throw new Error("Effect \\\\\\"" + effectName + "\\\\\\" not available. Fast Blur has been replaced with Fast Box Blur in newer versions of After Effects.");\n';
     script += '}\n\n';
     
     script += 'var result = {};\n';

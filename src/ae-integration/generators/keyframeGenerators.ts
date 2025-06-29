@@ -209,7 +209,8 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '// Get property using proper After Effects property access\n';
     script += 'var prop = null;\n';
     script += 'var propertyPath = "' + helpers.escapeString(params.propertyPath) + '";\n';
-    script += 'var layerInfo = "Layer: " + layer.name + " [" + layer.index + "]";\n\n';
+    script += 'var layerNameSafe = layer.name;\n';
+    script += 'var layerInfo = "Layer: " + layerNameSafe + " [" + layer.index + "]";\n\n';
     
     script += '// Navigate property path\n';
     script += 'var pathParts = propertyPath.split(".");\n';
@@ -247,7 +248,9 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     
     script += '// Check if property has keyframes\n';
     script += 'if (prop.numKeys === 0) {\n';
-    script += '  throw new Error("Property \\\\"" + propertyPath + "\\\\" has no keyframes. " + layerInfo);\n';
+    script += '  var errorMsg = "Property \\\\\\"" + propertyPath + "\\\\\\" has no keyframes. ";\n';
+    script += '  errorMsg += layerInfo;\n';
+    script += '  throw new Error(errorMsg);\n';
     script += '}\n\n';
     
     script += 'var keyIndices = ' + (params.keyframeIndices ? JSON.stringify(params.keyframeIndices) : 'null') + ';\n';
@@ -366,7 +369,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += 'result.data.totalKeyframes = prop.numKeys;\n';
     script += 'result.data.easeType = easeType;\n';
     script += 'result.data.propertyType = prop.propertyValueType;\n';
-    script += 'result.data.appliedIndices = keyIndices.slice();\n';
+    script += 'result.data.appliedIndices = keyIndices;\n';
     script += 'return result;';
     
     return script;
