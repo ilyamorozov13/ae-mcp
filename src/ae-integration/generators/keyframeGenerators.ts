@@ -226,8 +226,13 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '    prop = prop.property("ADBE Scale");\n';
     script += '  } else if (part === "Rotation" && i > 0 && pathParts[i-1] === "Transform") {\n';
     script += '    prop = prop.property("ADBE Rotate Z");\n';
-    script += '  } else if (part === "Opacity" && prop === layer) {\n';
-    script += '    prop = prop.property("ADBE Opacity");\n';
+    script += '  } else if (part === "Opacity") {\n';
+    script += '    // Opacity is at layer level, not under Transform\n';
+    script += '    if (prop === layer || (i > 0 && pathParts[i-1] === "Transform")) {\n';
+    script += '      prop = layer.property("ADBE Opacity");\n';
+    script += '    } else {\n';
+    script += '      prop = prop.property("ADBE Opacity");\n';
+    script += '    }\n';
     script += '  } else {\n';
     script += '    prop = prop.property(part);\n';
     script += '  }\n';
@@ -249,7 +254,8 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '// Check if property has keyframes\n';
     script += 'if (prop.numKeys === 0) {\n';
     script += '  var errorMsg = "Property \\\\\\"" + propertyPath + "\\\\\\" has no keyframes. ";\n';
-    script += '  errorMsg += layerInfo;\n';
+    script += '  errorMsg += layerInfo + ". ";\n';
+    script += '  errorMsg += "Please add keyframes using set_keyframe before applying easing.";\n';
     script += '  throw new Error(errorMsg);\n';
     script += '}\n\n';
     
