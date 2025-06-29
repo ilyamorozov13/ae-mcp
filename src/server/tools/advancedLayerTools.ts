@@ -409,6 +409,48 @@ export const advancedLayerTools = [
   },
 
   {
+    name: "animate_time_remap",
+    description: "Set time remap keyframes for a layer (automatically enables time remapping)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        compId: { 
+          type: "number", 
+          description: "ID of the composition" 
+        },
+        layerIndex: { 
+          type: "number", 
+          description: "Index of the layer" 
+        },
+        keyframes: {
+          type: "array",
+          description: "Array of time remap keyframes",
+          items: {
+            type: "object",
+            properties: {
+              time: {
+                type: "number",
+                description: "Time in seconds"
+              },
+              value: {
+                type: "number",
+                description: "Remapped time value in seconds"
+              }
+            },
+            required: ["time", "value"]
+          }
+        },
+        clearExisting: {
+          type: "boolean",
+          default: true,
+          description: "Clear existing keyframes before adding new ones"
+        }
+      },
+      required: ["compId", "layerIndex", "keyframes"]
+    }
+  },
+
+  {
     name: "get_layer_info",
     description: "Get detailed information about a layer",
     inputSchema: {

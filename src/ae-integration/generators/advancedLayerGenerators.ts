@@ -421,5 +421,61 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
         timeRemapEnabled: layer.timeRemapEnabled
       }
     };
-  `
+  `,
+  
+  animateTimeRemap: (params: { 
+    compId: number; 
+    layerIndex: number; 
+    keyframes: Array<{ time: number; value: number }>; 
+    clearExisting?: boolean 
+  }) => {
+    let script = '';
+    script += 'var comp = app.project.itemByID(' + params.compId + ');\n';
+    script += 'if (!comp || !(comp instanceof CompItem)) {\n';
+    script += '  throw new Error("Composition not found");\n';
+    script += '}\n\n';
+    
+    script += 'var layer = comp.layer(' + params.layerIndex + ');\n';
+    script += 'if (!layer) {\n';
+    script += '  throw new Error("Layer not found");\n';
+    script += '}\n\n';
+    
+    script += 'if (!(layer instanceof AVLayer)) {\n';
+    script += '  throw new Error("Time remapping can only be applied to AV layers");\n';
+    script += '}\n\n';
+    
+    script += '// Enable time remapping first\n';
+    script += 'layer.timeRemapEnabled = true;\n\n';
+    
+    script += '// Get the Time Remap property\n';
+    script += 'var timeRemap = layer.property("Time Remap");\n';
+    script += 'if (!timeRemap) {\n';
+    script += '  throw new Error("Could not access Time Remap property");\n';
+    script += '}\n\n';
+    
+    if (params.clearExisting !== false) {
+      script += '// Clear existing keyframes\n';
+      script += 'while (timeRemap.numKeys > 0) {\n';
+      script += '  timeRemap.removeKey(1);\n';
+      script += '}\n\n';
+    }
+    
+    script += '// Add keyframes\n';
+    script += 'var keyframes = ' + JSON.stringify(params.keyframes) + ';\n';
+    script += 'for (var i = 0; i < keyframes.length; i++) {\n';
+    script += '  timeRemap.setValueAtTime(keyframes[i].time, keyframes[i].value);\n';
+    script += '}\n\n';
+    
+    script += 'return {\n';
+    script += '  success: true,\n';
+    script += '  data: {\n';
+    script += '    layerIndex: layer.index,\n';
+    script += '    layerName: layer.name,\n';
+    script += '    keyframesSet: keyframes.length,\n';
+    script += '    timeRemapEnabled: true\n';
+    script += '  }\n';
+    script += '};';
+    
+    return script;
+  }
 };

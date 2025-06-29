@@ -121,11 +121,9 @@ export const keyframeGenerators: ScriptGeneratorModule = {
         script += '        }\n';
         script += '      } catch (e) {\n';
         script += '        // Fallback to property type checking\n';
-        script += '        if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
-        script += '            prop.propertyValueType === PropertyValueType.TwoD) {\n';
+        script += '        if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || prop.propertyValueType === PropertyValueType.TwoD) {\n';
         script += '          numDimensions = 2;\n';
-        script += '        } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || \n';
-        script += '                   prop.propertyValueType === PropertyValueType.ThreeD) {\n';
+        script += '        } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || prop.propertyValueType === PropertyValueType.ThreeD) {\n';
         script += '          numDimensions = 3;\n';
         script += '        }\n';
         script += '      }\n';
@@ -157,8 +155,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
       // Set spatial interpolation for position properties
       if (params.interpolation.spatialInterpolation) {
         script += '// Set spatial interpolation for position properties\n';
-        script += 'if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
-        script += '    prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {\n';
+        script += 'if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL) {\n';
         script += '  var spatialType = "' + params.interpolation.spatialInterpolation + '";\n';
         script += '  \n';
         script += '  switch(spatialType) {\n';
@@ -305,11 +302,9 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '          }\n';
     script += '        } catch (e) {\n';
     script += '          // If we cannot get key value, try to infer from property type\n';
-    script += '          if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
-    script += '              prop.propertyValueType === PropertyValueType.TwoD) {\n';
+    script += '          if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || prop.propertyValueType === PropertyValueType.TwoD) {\n';
     script += '            numDimensions = 2;\n';
-    script += '          } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || \n';
-    script += '                     prop.propertyValueType === PropertyValueType.ThreeD) {\n';
+    script += '          } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || prop.propertyValueType === PropertyValueType.ThreeD) {\n';
     script += '            numDimensions = 3;\n';
     script += '          }\n';
     script += '        }\n';
@@ -556,11 +551,9 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '      }\n';
     script += '    } catch (e2) {\n';
     script += '      // Check property type\n';
-    script += '      if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
-    script += '          prop.propertyValueType === PropertyValueType.TwoD) {\n';
+    script += '      if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || prop.propertyValueType === PropertyValueType.TwoD) {\n';
     script += '        numDimensions = 2;\n';
-    script += '      } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || \n';
-    script += '                 prop.propertyValueType === PropertyValueType.ThreeD) {\n';
+    script += '      } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || prop.propertyValueType === PropertyValueType.ThreeD) {\n';
     script += '        numDimensions = 3;\n';
     script += '      }\n';
     script += '    }\n';
@@ -836,8 +829,7 @@ export const keyframeGenerators: ScriptGeneratorModule = {
     script += '          if (prop.propertyValueType === PropertyValueType.TwoD_SPATIAL || \n';
     script += '              prop.propertyValueType === PropertyValueType.TwoD) {\n';
     script += '            numDimensions = 2;\n';
-    script += '          } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || \n';
-    script += '                     prop.propertyValueType === PropertyValueType.ThreeD) {\n';
+    script += '          } else if (prop.propertyValueType === PropertyValueType.ThreeD_SPATIAL || prop.propertyValueType === PropertyValueType.ThreeD) {\n';
     script += '            numDimensions = 3;\n';
     script += '          }\n';
     script += '        }\n';

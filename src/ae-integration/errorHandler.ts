@@ -77,6 +77,9 @@ export class AEErrorHandler {
     if (message.includes('Invalid parameter')) {
       return 'INVALID_PARAM';
     }
+    if (message.includes('property is hidden') || message.includes('parent property is hidden')) {
+      return 'TIME_REMAP_NOT_ENABLED';
+    }
     if (message.includes('Property not found') || message.includes('Property has no keyframes')) {
       return 'PROPERTY_ERROR';
     }

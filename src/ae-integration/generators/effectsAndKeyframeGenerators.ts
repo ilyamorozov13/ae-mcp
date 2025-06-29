@@ -19,10 +19,42 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '}\n\n';
     
     script += '// Apply the effect\n';
-    script += 'var effect = layer.property("Effects").addProperty("' + helpers.escapeString(params.effectName) + '");\n\n';
+    script += 'var effects = layer.property("Effects");\n';
+    script += 'if (!effects) {\n';
+    script += '  throw new Error("Cannot access Effects property on layer");\n';
+    script += '}\n\n';
+    
+    script += '// Check if we can add this effect\n';
+    script += 'var effectName = "' + helpers.escapeString(params.effectName) + '";\n';
+    script += 'var effect = null;\n\n';
+    
+    script += 'try {\n';
+    script += '  // Try exact name first\n';
+    script += '  if (effects.canAddProperty(effectName)) {\n';
+    script += '    effect = effects.addProperty(effectName);\n';
+    script += '  } else {\n';
+    script += '    // Try common variations\n';
+    script += '    var variations = [];\n';
+    script += '    if (effectName === "Fast Blur") {\n';
+    script += '      variations = ["Fast Box Blur", "Box Blur", "Gaussian Blur"];\n';
+    script += '    } else if (effectName === "Glow") {\n';
+    script += '      variations = ["Glow", "Glow 2.0"];\n';
+    script += '    }\n';
+    script += '    \n';
+    script += '    for (var i = 0; i < variations.length; i++) {\n';
+    script += '      if (effects.canAddProperty(variations[i])) {\n';
+    script += '        effect = effects.addProperty(variations[i]);\n';
+    script += '        effectName = variations[i];\n';
+    script += '        break;\n';
+    script += '      }\n';
+    script += '    }\n';
+    script += '  }\n';
+    script += '} catch (e) {\n';
+    script += '  throw new Error("Error adding effect \\\\"" + effectName + "\\\\": " + e.toString());\n';
+    script += '}\n\n';
     
     script += 'if (!effect) {\n';
-    script += '  throw new Error("Failed to apply effect: ' + helpers.escapeString(params.effectName) + '");\n';
+    script += '  throw new Error("Effect \\\\"' + helpers.escapeString(params.effectName) + '\\\\" not available. Fast Blur has been replaced with Fast Box Blur in newer versions of After Effects.");\n';
     script += '}\n\n';
     
     script += 'return {\n';
@@ -87,6 +119,13 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     script += '  \n';
     script += '  if (!prop) {\n';
     script += '    throw new Error("Property not found: " + normalizedProperty + " (original: " + propertyName + ")");\n';
+    script += '  }\n';
+    script += '}\n\n';
+    
+    script += '// Special handling for Time Remap\n';
+    script += 'if (normalizedProperty === "Time Remap" || propertyName === "Time Remap") {\n';
+    script += '  if (layer instanceof AVLayer && !layer.timeRemapEnabled) {\n';
+    script += '    throw new Error("Time Remap is not enabled for this layer. Use set_time_remapping to enable it first, or use animate_time_remap which handles this automatically.");\n';
     script += '  }\n';
     script += '}\n\n';
     

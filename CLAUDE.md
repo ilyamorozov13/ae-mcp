@@ -89,6 +89,61 @@ Always verify that generated ExtendScript code:
 4. Uses ES3-compatible loops and conditionals
 5. Handles arrays with for loops, not modern methods
 
+### Common After Effects Script Pitfalls
+
+#### Time Remapping
+Before accessing the Time Remap property, you MUST enable it first:
+```javascript
+// WRONG - This will throw "property is hidden" error
+var timeRemap = layer.property("Time Remap");
+
+// CORRECT - Enable time remapping first
+layer.timeRemapEnabled = true;
+var timeRemap = layer.property("Time Remap");
+```
+
+Complete example for execute_script:
+```javascript
+var comp = app.project.itemByID(931);
+if (!comp) {
+  throw new Error("Composition not found");
+}
+
+var layer = comp.layer(2);
+if (!layer) {
+  throw new Error("Layer not found");
+}
+
+// IMPORTANT: Enable time remapping BEFORE accessing the property
+if (layer instanceof AVLayer) {
+  layer.timeRemapEnabled = true;
+  
+  // Now you can safely access Time Remap
+  var timeRemap = layer.property("Time Remap");
+  
+  // Clear existing keyframes
+  while (timeRemap.numKeys > 0) {
+    timeRemap.removeKey(1);
+  }
+  
+  // Set keyframes: 0 seconds maps to 0, 2 seconds maps to 4 (2x speed)
+  timeRemap.setValueAtTime(0, 0);
+  timeRemap.setValueAtTime(2, 4);
+  
+  // Adjust layer timing
+  layer.outPoint = 2;
+}
+
+"Time remapping applied successfully";
+```
+
+**Better approach:** Use the `animate_time_remap` tool instead, which handles all of this automatically.
+
+#### Effect Names
+Some effects have been renamed in newer versions:
+- "Fast Blur" → "Fast Box Blur" (use the applyEffect tool which handles this automatically)
+- Check effect availability with `effects.canAddProperty(effectName)` before adding
+
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
