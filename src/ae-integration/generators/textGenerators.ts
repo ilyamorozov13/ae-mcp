@@ -49,7 +49,21 @@ export const textGenerators: ScriptGeneratorModule = {
       script += 'var sourceText = ' + JSON.stringify(params.sourceText) + ';\n\n';
       
       if (params.sourceText.font) {
-        script += 'textDocument.font = "' + helpers.escapeString(params.sourceText.font) + '";\n';
+        // After Effects requires PostScript name for fonts with spaces
+        script += 'try {\n';
+        script += '  // Try setting font directly first\n';
+        script += '  textDocument.font = "' + helpers.escapeString(params.sourceText.font) + '";\n';
+        script += '} catch (e) {\n';
+        script += '  // If that fails, try removing spaces (common for fonts like "Arial Black" -> "ArialBlack")\n';
+        script += '  var fontNameNoSpaces = "' + helpers.escapeString(params.sourceText.font) + '".replace(/ /g, "");\n';
+        script += '  try {\n';
+        script += '    textDocument.font = fontNameNoSpaces;\n';
+        script += '  } catch (e2) {\n';
+        script += '    // If both fail, try with hyphen (e.g., "Arial Black" -> "Arial-Black")\n';
+        script += '    var fontNameHyphen = "' + helpers.escapeString(params.sourceText.font) + '".replace(/ /g, "-");\n';
+        script += '    textDocument.font = fontNameHyphen;\n';
+        script += '  }\n';
+        script += '}\n';
       }
       if (params.sourceText.fontSize !== undefined) {
         script += 'textDocument.fontSize = ' + params.sourceText.fontSize + ';\n';
@@ -174,7 +188,21 @@ export const textGenerators: ScriptGeneratorModule = {
     // Update font properties
     script += '\n// Update font properties\n';
     if (params.properties.font) {
-      script += 'textDocument.font = "' + helpers.escapeString(params.properties.font) + '";\n';
+      // After Effects requires PostScript name for fonts with spaces
+      script += 'try {\n';
+      script += '  // Try setting font directly first\n';
+      script += '  textDocument.font = "' + helpers.escapeString(params.properties.font) + '";\n';
+      script += '} catch (e) {\n';
+      script += '  // If that fails, try removing spaces (common for fonts like "Arial Black" -> "ArialBlack")\n';
+      script += '  var fontNameNoSpaces = "' + helpers.escapeString(params.properties.font) + '".replace(/ /g, "");\n';
+      script += '  try {\n';
+      script += '    textDocument.font = fontNameNoSpaces;\n';
+      script += '  } catch (e2) {\n';
+      script += '    // If both fail, try with hyphen (e.g., "Arial Black" -> "Arial-Black")\n';
+      script += '    var fontNameHyphen = "' + helpers.escapeString(params.properties.font) + '".replace(/ /g, "-");\n';
+      script += '    textDocument.font = fontNameHyphen;\n';
+      script += '  }\n';
+      script += '}\n';
     }
     if (params.properties.fontSize !== undefined) {
       script += 'textDocument.fontSize = ' + params.properties.fontSize + ';\n';
