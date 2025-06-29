@@ -407,8 +407,21 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
       throw new Error("Layer not found");
     }
     
-    if (!(layer instanceof AVLayer)) {
-      throw new Error("Time remapping can only be applied to AV layers");
+    // Check if layer supports time remapping
+    // CompItem layers (nested compositions) also support time remapping
+    var isValidLayer = false;
+    try {
+      // Try to access source to determine layer type
+      if (layer.source) {
+        isValidLayer = layer.source instanceof CompItem || layer.source instanceof FootageItem;
+      }
+    } catch (e) {
+      // If we cannot access source, try to enable time remapping anyway
+      isValidLayer = true;
+    }
+    
+    if (!isValidLayer) {
+      throw new Error("Time remapping can only be applied to composition or footage layers");
     }
     
     layer.timeRemapEnabled = ${params.enabled};
@@ -440,15 +453,42 @@ export const advancedLayerGenerators: ScriptGeneratorModule = {
     script += '  throw new Error("Layer not found");\n';
     script += '}\n\n';
     
-    script += 'if (!(layer instanceof AVLayer)) {\n';
-    script += '  throw new Error("Time remapping can only be applied to AV layers");\n';
+    script += '// Check if layer supports time remapping\n';
+    script += '// CompItem layers (nested compositions) also support time remapping\n';
+    script += 'var isValidLayer = false;\n';
+    script += 'try {\n';
+    script += '  // Try to access source to determine layer type\n';
+    script += '  if (layer.source) {\n';
+    script += '    isValidLayer = layer.source instanceof CompItem || layer.source instanceof FootageItem;\n';
+    script += '  }\n';
+    script += '} catch (e) {\n';
+    script += '  // If we cannot access source, try to enable time remapping anyway\n';
+    script += '  isValidLayer = true;\n';
+    script += '}\n\n';
+    script += 'if (!isValidLayer) {\n';
+    script += '  throw new Error("Time remapping can only be applied to composition or footage layers");\n';
     script += '}\n\n';
     
     script += '// Enable time remapping first\n';
     script += 'layer.timeRemapEnabled = true;\n\n';
     
-    script += '// Get the Time Remap property using the correct property path\n';
-    script += 'var timeRemap = layer.property("ADBE Time Remapping");\n';
+    script += '// Get the Time Remap property - use the standard property name\n';
+    script += '// Note: For precomp layers, there might be a timing issue where the property\n';
+    script += '// is not immediately accessible after enabling time remapping\n';
+    script += 'var timeRemap = null;\n';
+    script += 'try {\n';
+    script += '  timeRemap = layer.property("Time Remap");\n';
+    script += '} catch (e) {\n';
+    script += '  // Try alternative access method for precomp layers\n';
+    script += '  try {\n';
+    script += '    // Force After Effects to update the layer properties\n';
+    script += '    layer.selected = true;\n';
+    script += '    layer.selected = false;\n';
+    script += '    timeRemap = layer.property("Time Remap");\n';
+    script += '  } catch (e2) {\n';
+    script += '    throw new Error("Could not access Time Remap property. The property may be hidden for this layer type.");\n';
+    script += '  }\n';
+    script += '}\n';
     script += 'if (!timeRemap) {\n';
     script += '  throw new Error("Could not access Time Remap property");\n';
     script += '}\n\n';
