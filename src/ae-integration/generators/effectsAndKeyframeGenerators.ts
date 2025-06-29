@@ -21,7 +21,7 @@ export const effectsAndKeyframeGenerators: ScriptGeneratorModule = {
     var effect = layer.property("Effects").addProperty("${helpers.escapeString(params.effectName)}");
     
     if (!effect) {
-      throw new Error("Failed to apply effect: " + "${helpers.escapeString(params.effectName)}");
+      throw new Error("Failed to apply effect: " + "${params.effectName}");
     }
     
     return {
