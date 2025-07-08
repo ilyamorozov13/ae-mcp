@@ -224,6 +224,10 @@ class StdioMCPServer {
 
   private async handleToolCall(params: any) {
     const { name, arguments: args } = params;
+    
+    // Log the incoming tool call for debugging
+    logger.debug(`Tool call received: ${name}`, { arguments: args });
+    
     const tool = this.tools.get(name);
     
     if (!tool) {
@@ -231,6 +235,17 @@ class StdioMCPServer {
     }
     
     try {
+      // Validate arguments against the tool's input schema if available
+      if (tool.inputSchema && args) {
+        // Basic validation - check required fields
+        const required = tool.inputSchema.required || [];
+        for (const field of required) {
+          if (!(field in args)) {
+            throw new Error(`Missing required field '${field}' for tool '${name}'`);
+          }
+        }
+      }
+      
       // Connect to AE bridge if not connected
       if (this.useFileBridge) {
         await this.communicator.connect();
@@ -354,10 +369,27 @@ class StdioMCPServer {
   }
   
   private async handleBatchExecute(args: any): Promise<any> {
+    // Log the received args for debugging
+    logger.debug('handleBatchExecute received args:', JSON.stringify(args));
+    
+    // Handle case where args might be undefined or null
+    if (!args || typeof args !== 'object') {
+      throw new Error("Invalid arguments: expected an object with 'commands' array");
+    }
+    
     const { commands, sequential } = args;
     
-    if (!Array.isArray(commands) || commands.length === 0) {
-      throw new Error("Commands must be a non-empty array");
+    // More detailed validation with better error messages
+    if (commands === undefined) {
+      throw new Error("Missing 'commands' field in batch_execute arguments");
+    }
+    
+    if (!Array.isArray(commands)) {
+      throw new Error(`Commands must be an array, received: ${typeof commands}`);
+    }
+    
+    if (commands.length === 0) {
+      throw new Error("Commands array cannot be empty");
     }
     
     // Validate all commands before execution

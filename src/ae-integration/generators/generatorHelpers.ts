@@ -116,9 +116,10 @@ export const generatorHelpers = {
     script += '  } else if (part === "Opacity") {\n';
     script += '    // Opacity is at layer level, not under Transform\n';
     script += '    if (prop === layer || (i > 0 && pathParts[i-1] === "Transform")) {\n';
-    script += '      prop = layer.property("ADBE Opacity");\n';
+    script += '      // Try both property naming conventions\n';
+    script += '      prop = layer.property("ADBE Opacity") || layer.property("Opacity");\n';
     script += '    } else {\n';
-    script += '      prop = prop.property("ADBE Opacity");\n';
+    script += '      prop = prop.property("ADBE Opacity") || prop.property("Opacity");\n';
     script += '    }\n';
     script += '  } else {\n';
     script += '    prop = prop.property(part);\n';

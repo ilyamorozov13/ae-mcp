@@ -222,6 +222,34 @@ describe('Error Fixes Test Suite', () => {
       expect(script).toContain('if (!prop)');
       expect(script).toContain('throw new Error("Property not found: " + propertyPath);');
     });
+
+    it('should handle Transform.Opacity with fallback property names', () => {
+      const script = keyframeGenerators.applyEasyEase({
+        compId: 1,
+        layerIndex: 10,
+        propertyPath: 'Transform.Opacity',
+        easeType: 'ease'
+      });
+
+      // Should try both ADBE and simple property names for opacity
+      expect(script).toContain('prop = layer.property("ADBE Opacity") || layer.property("Opacity");');
+      
+      // Should handle Transform.Opacity correctly by accessing layer-level opacity
+      expect(script).toContain('pathParts[i-1] === "Transform"');
+    });
+
+    it('should handle direct Opacity property path', () => {
+      const script = keyframeGenerators.applyEasyEase({
+        compId: 1,
+        layerIndex: 5,
+        propertyPath: 'Opacity',
+        easeType: 'easeIn'
+      });
+
+      // Should handle direct opacity access
+      expect(script).toContain('part === "Opacity"');
+      expect(script).toContain('prop = layer.property("ADBE Opacity") || layer.property("Opacity");');
+    });
   });
 
   describe('Integration test for all three fixes', () => {
