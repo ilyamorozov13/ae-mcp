@@ -2,6 +2,88 @@
 
 A Model Context Protocol (MCP) server that enables AI assistants to interact with Adobe After Effects through a file-based communication bridge.
 
+## Установка на Mac (коротко)
+
+Нужно: macOS, After Effects 2022+ (проверено на 2025 и 2026), [Node.js](https://nodejs.org) 18+ и Git. Если стоит Homebrew: `brew install node git`.
+
+### 1. Скачать и собрать
+
+```bash
+cd ~
+git clone https://github.com/ilyamorozov13/ae-mcp.git
+cd ae-mcp
+npm install
+npm run build
+pwd   # запомнить путь, он нужен в шаге 4
+```
+
+### 2. Поставить мост в After Effects
+
+Закрыть After Effects и выполнить в папке `ae-mcp`:
+
+```bash
+bash cep-extension/install.sh
+```
+
+### 3. Настроить After Effects
+
+1. Открыть After Effects.
+2. Settings (Preferences) → Scripting & Expressions → включить **Allow Scripts to Write Files and Access Network**.
+3. Перезапустить After Effects.
+4. Открыть панель **Window → AE MCP Bridge** (или **Window → Extensions (Legacy) → AE MCP Bridge**), пристыковать её и не закрывать. Статус в панели — `Sleeping`.
+
+### 4. Подключить к агенту
+
+Блок конфига (заменить путь на результат `pwd` из шага 1):
+
+```json
+{
+  "mcpServers": {
+    "adobe-after-effects": {
+      "command": "node",
+      "args": ["/Users/ИМЯ/ae-mcp/dist/stdio-server.js"],
+      "env": {
+        "AE_USE_FILE_BRIDGE": "true",
+        "LOG_LEVEL": "info",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    }
+  }
+}
+```
+
+- **Cursor**: вставить в `~/.cursor/mcp.json` (если файл уже есть, добавить `adobe-after-effects` внутрь существующего `mcpServers`). Затем Cursor Settings → MCP, проверить, что сервер зелёный.
+- **Claude Desktop**: вставить в `~/Library/Application Support/Claude/claude_desktop_config.json` и перезапустить Claude.
+- **Claude Code**:
+
+  ```bash
+  claude mcp add --scope user --env AE_USE_FILE_BRIDGE=true adobe-after-effects -- node ~/ae-mcp/dist/stdio-server.js
+  ```
+
+Если сервер пишет, что `node` не найден, заменить `"command": "node"` на полный путь из `which node`.
+
+### 5. Проверить
+
+Написать агенту: «пингани After Effects». При первой команде macOS может спросить, можно ли управлять After Effects — разрешить.
+
+### Обновление
+
+```bash
+cd ~/ae-mcp && git pull && npm install && npm run build && bash cep-extension/install.sh
+```
+
+Потом перезапустить After Effects и агент.
+
+### Анализ видео-референсов (необязательно)
+
+```bash
+brew install ffmpeg && pip3 install pillow
+python3 tools/video/analyze_video.py ВИДЕО.mp4      # -> /tmp/vcp/<имя>/
+python3 tools/video/compare_frames.py --ref REF.mp4 --build BUILD.mp4
+```
+
+Правила работы для агента (как не уронить AE, порядок команд) лежат в `CLAUDE.md`.
+
 ## Background
 
 - I signed up for https://schoolofmotion.com/ again on my vacation. And started to go through Joey's very first lesson (Desk Unmessed) to take an inventory of where I'm at. I animated one item, and then got to thinking... it'd be nice to use MCP here and connect Amazon Q or Claude Code and "repeat the animation" for the other shapes I just did.
@@ -70,8 +152,8 @@ cd cep-extension
 ### 3. Enable the Extension in After Effects
 
 1. Open After Effects
-2. Go to Window > Extensions > AE MCP Bridge
-3. Ensure "Auto Process: ON" is enabled
+2. Go to Window > AE MCP Bridge (or Window > Extensions (Legacy) > AE MCP Bridge)
+3. Keep the panel docked; it should say "Sleeping — safe to edit"
 
 ### 4. Configure Your MCP Client
 
@@ -82,7 +164,7 @@ For Claude Desktop, add to `~/Library/Application Support/Claude/claude_desktop_
   "mcpServers": {
     "ae-mcp": {
       "command": "node",
-      "args": ["/path/to/ae-mcp/dist/stdio-server-hybrid.js"],
+      "args": ["/path/to/ae-mcp/dist/stdio-server.js"],
       "env": {
         "AE_USE_FILE_BRIDGE": "true"
       }

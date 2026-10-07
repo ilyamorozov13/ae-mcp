@@ -49,38 +49,36 @@ export const utilityGenerators: ScriptGeneratorModule = {
   `,
   
   executeScript: (params: { script: string; undoGroupName?: string; wrapInTransaction?: boolean }) => {
+    // Host.jsx already wraps mutating MCP commands in one undo group.
+    // Nested beginUndoGroup/endUndoGroup leaves AE's undo stack corrupt and
+    // crashes on the next user edit (BEE_WorkQueue / PreCloseProject).
+    const wrap = params.wrapInTransaction === true;
     let script = '';
-    
-    // Add beginUndoGroup if needed
-    if (params.wrapInTransaction !== false) {
+
+    script += 'var mcpScriptResult = undefined;\n';
+    if (wrap) {
       script += 'app.beginUndoGroup("' + helpers.escapeString(params.undoGroupName || 'Script Execution') + '");\n';
     }
-    
     script += 'try {\n';
-    script += '  // Execute the provided script\n';
-    script += '  ' + params.script + '\n';
-    
-    // Add endUndoGroup if needed
-    if (params.wrapInTransaction !== false) {
-      script += '  app.endUndoGroup();\n';
+    script += '  mcpScriptResult = (function() {\n';
+    script += params.script + '\n';
+    script += '  })();\n';
+    script += '} finally {\n';
+    script += '  try { app.endSuppressDialogs(false); } catch (eDialog) {}\n';
+    if (wrap) {
+      script += '  try { app.endUndoGroup(); } catch (eUndo) {}\n';
     }
-    
-    script += '  return {\n';
-    script += '    success: true,\n';
-    script += '    data: {\n';
-    script += '      message: "Script executed successfully"\n';
-    script += '    }\n';
-    script += '  };\n';
-    script += '} catch (error) {\n';
-    
-    // Add endUndoGroup in catch block if needed
-    if (params.wrapInTransaction !== false) {
-      script += '  app.endUndoGroup();\n';
-    }
-    
-    script += '  throw error;\n';
-    script += '}';
-    
+    script += '}\n';
+    script += 'var result = {};\n';
+    script += 'result.success = true;\n';
+    script += 'result.data = {};\n';
+    script += 'if (mcpScriptResult !== undefined && mcpScriptResult !== null) {\n';
+    script += '  result.data.result = mcpScriptResult;\n';
+    script += '} else {\n';
+    script += '  result.data.message = "Script executed successfully";\n';
+    script += '}\n';
+    script += 'return result;\n';
+
     return script;
   }
 };

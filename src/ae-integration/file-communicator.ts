@@ -1,9 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { fileURLToPath } from 'url';
 import { Logger } from 'winston';
 import { ScriptGenerator } from './scriptGenerator.js';
 import { AEErrorInfo, AEErrorHandler, createAEError } from './errorHandler.js';
+import { aeCommandUsesUndo } from './readOnlyCommands.js';
+import { kickAfterEffectsIfNeeded } from './aeKick.js';
 
 interface PendingCommand {
   resolve: (value: any) => void;
@@ -22,10 +25,12 @@ export class AEFileCommunicator {
   private isConnected = false;
   private isFirstCommand = true;
   private clientPrefix: string;
+  private fromDir: string;
   
   constructor(logger: Logger, clientPrefix?: string) {
     this.logger = logger;
     this.scriptGenerator = new ScriptGenerator();
+    this.fromDir = path.dirname(fileURLToPath(import.meta.url));
     
     // Generate unique client prefix if not provided
     this.clientPrefix = clientPrefix || `client_${process.pid}_${Date.now().toString(36)}`;
@@ -190,8 +195,9 @@ export class AEFileCommunicator {
             // Resolve promise
             if (!response.result || typeof response.result !== 'object') {
               pending.reject(createAEError('Invalid response format: missing result property', 'INVALID_RESPONSE'));
-            } else if (response.result.success) {
-              // Mark that we've successfully completed at least one command
+            } else if (response.result.success || (response.result.success === undefined && 'data' in response.result)) {
+              // Some bridge responses omit the explicit success flag but still
+              // return a data payload. Treat those as successful legacy responses.
               this.isFirstCommand = false;
               pending.resolve(response.result.data);
             } else {
@@ -305,7 +311,7 @@ export class AEFileCommunicator {
       
       // Write command file
       try {
-        const commandData = { id, script };
+        const commandData = { id, script, undo: aeCommandUsesUndo(command) };
         
         // Log the script for debugging
         this.logger.debug(`Generated script for ${command}:`);
@@ -317,6 +323,15 @@ export class AEFileCommunicator {
         // Verify file was written
         const stats = fs.statSync(commandFile);
         this.logger.debug(`Command file size: ${stats.size} bytes`);
+
+        // File > New Project closes the CEP panel. Without a kick, command
+        // files sit forever. One-shot AppleScript DoScript is safe; a
+        // background scheduleTask poller is not.
+        kickAfterEffectsIfNeeded({
+          commandsDir: this.commandsDir,
+          fromDir: this.fromDir,
+          logger: this.logger
+        });
       } catch (error) {
         clearTimeout(timeout);
         this.pendingCommands.delete(id);

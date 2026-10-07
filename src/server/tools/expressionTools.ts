@@ -342,7 +342,7 @@ export const expressionTools = [
 
   {
     name: "execute_script",
-    description: "Execute a custom ExtendScript in After Effects",
+    description: "Execute a custom ExtendScript in After Effects. Do not call app.beginUndoGroup, app.endUndoGroup, or unpaired app.beginSuppressDialogs — nested undo groups crash AE on the next user edit.",
     inputSchema: {
       type: "object",
       properties: {
@@ -352,8 +352,8 @@ export const expressionTools = [
         },
         wrapInTransaction: {
           type: "boolean",
-          default: true,
-          description: "Wrap script in app.beginUndoGroup/endUndoGroup"
+          default: false,
+          description: "Do not enable. The MCP host already wraps commands in one undo group. Nested undo groups crash After Effects on the next user edit."
         },
         undoGroupName: {
           type: "string",

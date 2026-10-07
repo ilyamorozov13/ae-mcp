@@ -12,6 +12,10 @@
     var autoProcess = true;
     var debugMode = localStorage.getItem('mcpDebugMode') === 'true';
     var processInterval = null;
+    var processingLock = false;
+    var idleTicks = 0;
+    var ACTIVE_POLL_MS = 400;
+    var IDLE_POLL_MS = 2000;
     var stats = {
         processed: 0,
         errors: 0
@@ -79,9 +83,10 @@
      * Initialize ExtendScript
      */
     function initializeExtendScript() {
-        csInterface.evalScript('initializeMCPBridge()', function(result) {
-            if (result === 'success') {
-                addLogEntry('MCP Bridge initialized successfully', 'success');
+        csInterface.evalScript('initializeMCPBridge(); mcpSleepBackgroundPoller(); "success"', function(result) {
+            if (result === 'success' || result === '"success"') {
+                addLogEntry('MCP Bridge sleeping — After Effects is safe to edit', 'success');
+                setStatus('ready', 'Sleeping — safe to edit');
             } else {
                 addLogEntry('Failed to initialize MCP Bridge: ' + result, 'error');
             }
@@ -89,13 +94,109 @@
     }
     
     /**
+     * Command folder listing from Chromium/Node only.
+     * Must never fall back to evalScript — that is what crashes AE
+     * when the user replaces a photo (BEE_WorkQueue PreCloseProject).
+     */
+    function getCommandsDir() {
+        return csInterface.getSystemPath(CSInterface.SystemPath.MY_DOCUMENTS) + '/ae-mcp-commands';
+    }
+
+    function listCommandFiles() {
+        var dir = getCommandsDir();
+        try {
+            if (window.cep && window.cep.fs && typeof window.cep.fs.readdir === 'function') {
+                var listing = window.cep.fs.readdir(dir);
+                if (listing && listing.err === 0 && listing.data) {
+                    return listing.data;
+                }
+            }
+        } catch (cepErr) {}
+        try {
+            var nodeFs = window.require && window.require('fs');
+            if (nodeFs && typeof nodeFs.readdirSync === 'function') {
+                return nodeFs.readdirSync(dir);
+            }
+        } catch (nodeErr) {}
+        return null;
+    }
+
+    function hasPendingCommandFiles() {
+        var names = listCommandFiles();
+        if (!names) {
+            return false;
+        }
+        for (var i = 0; i < names.length; i++) {
+            var name = names[i];
+            if (name.indexOf('.json') === -1) {
+                continue;
+            }
+            if (name.indexOf('.response') !== -1 || name.indexOf('.processed') !== -1) {
+                continue;
+            }
+            if (name.indexOf('_') === 0) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    function writeCepAlive(status) {
+        try {
+            var path = getCommandsDir() + '/_cep_alive.txt';
+            var body = String(Date.now()) + ' ' + String(status || 'Sleeping');
+            if (window.cep && window.cep.fs && typeof window.cep.fs.writeFile === 'function') {
+                window.cep.fs.writeFile(path, body);
+            } else {
+                var nodeFs = window.require && window.require('fs');
+                if (nodeFs && typeof nodeFs.writeFileSync === 'function') {
+                    nodeFs.writeFileSync(path, body);
+                }
+            }
+        } catch (e) {}
+    }
+
+    /**
      * Process commands manually
      */
     function processCommands() {
+        if (processingLock) {
+            return;
+        }
+
+        if (!hasPendingCommandFiles()) {
+            idleTicks++;
+            writeCepAlive('Sleeping');
+            if (idleTicks === 1) {
+                setStatus('ready', 'Sleeping — safe to edit');
+            }
+            return;
+        }
+
+        idleTicks = 0;
+        processingLock = true;
+        writeCepAlive('Processing');
         var startTime = Date.now();
         csInterface.evalScript('processCommands(' + debugMode + ')', function(result) {
+            processingLock = false;
+            writeCepAlive('Sleeping');
+            csInterface.evalScript('mcpSleepBackgroundPoller(); "ok"');
             try {
+                if (!result || result === 'undefined') {
+                    return;
+                }
+
                 var response = JSON.parse(result);
+                if (typeof response.success !== 'boolean') {
+                    if (typeof response.processed === 'number' &&
+                        typeof response.errors === 'number' &&
+                        response.commands instanceof Array) {
+                        response.success = true;
+                    } else {
+                        throw new Error('Invalid host response: ' + String(result).substring(0, 200));
+                    }
+                }
                 
                 if (response.success) {
                     // Only update status if we actually processed something
@@ -257,15 +358,20 @@
      */
     function startAutoProcessing() {
         if (processInterval) {
-            clearInterval(processInterval);
+            clearTimeout(processInterval);
+            processInterval = null;
         }
         
-        if (autoProcess) {
-            processInterval = setInterval(function() {
-                processCommands();
-                updateLastCheck();
-            }, 500); // Process every 500ms (reduced frequency)
+        function tick() {
+            if (!autoProcess) {
+                return;
+            }
+            processCommands();
+            updateLastCheck();
+            var delay = (idleTicks > 2) ? IDLE_POLL_MS : ACTIVE_POLL_MS;
+            processInterval = setTimeout(tick, delay);
         }
+        tick();
     }
     
     /**
@@ -273,9 +379,10 @@
      */
     function stopAutoProcessing() {
         if (processInterval) {
-            clearInterval(processInterval);
+            clearTimeout(processInterval);
             processInterval = null;
         }
+        processingLock = false;
     }
     
     /**

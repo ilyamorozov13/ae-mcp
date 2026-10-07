@@ -12,8 +12,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Enabling debug mode on macOS..."
     echo ""
     
-    # Enable for all CEP versions
-    for version in 5 6 7 8 9 10 11 12; do
+    # Enable for CEP 9–14 (AE 2024 = CSXS.11, AE 2025/2026 = CSXS.12)
+    for version in 5 6 7 8 9 10 11 12 13 14; do
         defaults write com.adobe.CSXS.$version PlayerDebugMode 1
         echo "✓ Enabled debug mode for CSXS.$version"
     done

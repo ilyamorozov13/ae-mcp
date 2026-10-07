@@ -6,6 +6,144 @@
 var COMMANDS_FOLDER_NAME = "ae-mcp-commands";
 var commandsFolder = null;
 var processedCommands = {};
+var mcpOwnUndoDepth = 0;
+
+function mcpBeginUndo(name) {
+    app.beginUndoGroup(name);
+    mcpOwnUndoDepth++;
+}
+
+function mcpEndUndo() {
+    if (mcpOwnUndoDepth > 0) {
+        try {
+            app.endUndoGroup();
+        } catch (e) {}
+        mcpOwnUndoDepth--;
+        if (mcpOwnUndoDepth < 0) {
+            mcpOwnUndoDepth = 0;
+        }
+    }
+}
+
+function mcpCloseOwnUndoGroups() {
+    while (mcpOwnUndoDepth > 0) {
+        mcpEndUndo();
+    }
+}
+
+// Extra app.endUndoGroup() / app.purge / $.sleep during BEE PreCloseProject
+// (user replacing a photo) crash After Effects. Only close groups we opened.
+function mcpSleepBackgroundPoller() {
+    $.global.mcpBridgeAutoProcess = false;
+    $.global.mcpBridgeLastStatus = "Sleeping";
+    $.global.mcpBridgePoll = function () {
+        $.global.mcpBridgeLastStatus = "Sleeping";
+    };
+    if ($.global.mcpBridgeTaskId) {
+        try {
+            app.cancelTask($.global.mcpBridgeTaskId);
+        } catch (cancelErr) {}
+        $.global.mcpBridgeTaskId = 0;
+    }
+}
+
+function mcpStabilizeAfterCommand(script) {
+    mcpCloseOwnUndoGroups();
+    try {
+        app.endSuppressDialogs(false);
+    } catch (dialogErr) {}
+}
+
+function mcpStabilizeAfterBatch(didMutate) {
+    mcpCloseOwnUndoGroups();
+    try {
+        app.endSuppressDialogs(false);
+    } catch (dialogErr) {}
+    mcpSleepBackgroundPoller();
+}
+
+function mcpHasPendingCommands() {
+    try {
+        if (!commandsFolder || !commandsFolder.exists) {
+            initializeMCPBridge();
+        }
+        if (!commandsFolder || !commandsFolder.exists) {
+            return false;
+        }
+        var allFiles = commandsFolder.getFiles("*.json");
+        var i;
+        for (i = 0; i < allFiles.length; i++) {
+            var fname = allFiles[i].name;
+            if (fname.indexOf(".response") === -1 &&
+                fname.indexOf(".processed") === -1 &&
+                fname.indexOf("_") !== 0 &&
+                !processedCommands[fname]) {
+                return true;
+            }
+        }
+        return false;
+    } catch (e) {
+        return false;
+    }
+}
+
+function mcpEscapeString(value) {
+    return String(value)
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\r/g, "\\r")
+        .replace(/\n/g, "\\n")
+        .replace(/\t/g, "\\t");
+}
+
+function mcpStringify(value) {
+    if (typeof JSON !== "undefined" && JSON && typeof JSON.stringify === "function") {
+        try {
+            // ExtendScript JSON.stringify often rejects the spacing argument
+            return JSON.stringify(value);
+        } catch (jsonError) {
+            // Fall through to manual serializer
+        }
+    }
+
+    if (value === null) {
+        return "null";
+    }
+
+    var valueType = typeof value;
+    if (valueType === "string") {
+        return '"' + mcpEscapeString(value) + '"';
+    }
+    if (valueType === "number" || valueType === "boolean") {
+        return String(value);
+    }
+    if (valueType === "undefined" || valueType === "function") {
+        return "null";
+    }
+
+    if (value instanceof Array) {
+        var arrayParts = [];
+        for (var i = 0; i < value.length; i++) {
+            arrayParts.push(mcpStringify(value[i]));
+        }
+        return "[" + arrayParts.join(",") + "]";
+    }
+
+    var objectParts = [];
+    for (var key in value) {
+        if (value.hasOwnProperty(key) && typeof value[key] !== "function" && typeof value[key] !== "undefined") {
+            objectParts.push('"' + mcpEscapeString(key) + '":' + mcpStringify(value[key]));
+        }
+    }
+    return "{" + objectParts.join(",") + "}";
+}
+
+function mcpParse(content) {
+    if (typeof JSON !== "undefined" && JSON && typeof JSON.parse === "function") {
+        return JSON.parse(content);
+    }
+    return eval("(" + content + ")");
+}
 
 /**
  * Initialize MCP Bridge
@@ -22,6 +160,10 @@ function initializeMCPBridge() {
         
         // Clear processed commands on initialization to allow re-processing
         processedCommands = {};
+        mcpOwnUndoDepth = 0;
+        if (!$.global.mcpBridgeBusy) {
+            mcpSleepBackgroundPoller();
+        }
         
         return "success";
     } catch (e) {
@@ -38,8 +180,15 @@ function processCommands(debugMode) {
         processed: 0,
         errors: 0,
         commands: [],
-        errorDetails: []
+        errorDetails: [],
+        mutated: 0
     };
+
+    if ($.global.mcpBridgeBusy) {
+        result.busy = true;
+        return mcpStringify(result);
+    }
+    $.global.mcpBridgeBusy = true;
     
     try {
         if (!commandsFolder || !commandsFolder.exists) {
@@ -52,8 +201,10 @@ function processCommands(debugMode) {
         
         // Filter out response files and processed files
         for (var i = 0; i < allFiles.length; i++) {
-            if (allFiles[i].name.indexOf(".response") === -1 && 
-                allFiles[i].name.indexOf(".processed") === -1) {
+            var fname = allFiles[i].name;
+            if (fname.indexOf(".response") === -1 &&
+                fname.indexOf(".processed") === -1 &&
+                fname.indexOf("_") !== 0) {
                 files.push(allFiles[i]);
             }
         }
@@ -75,12 +226,15 @@ function processCommands(debugMode) {
                 file.close();
                 
                 // Parse JSON to get the script
-                var commandData = JSON.parse(content);
+                var commandData = mcpParse(content);
                 var commandId = commandData.id;
                 var script = commandData.script;
+                var useUndo = commandData.undo !== false;
                 
-                // Execute the command
-                app.beginUndoGroup("MCP Command: " + file.name);
+                if (useUndo) {
+                    mcpBeginUndo("MCP Command: " + file.name);
+                    result.mutated++;
+                }
                 try {
                     // Execute the script and capture the result
                     var commandResult = eval(script);
@@ -98,14 +252,15 @@ function processCommands(debugMode) {
                         };
                     }
                     
-                    // Write response file
+                    // Write response file (serialize before open to avoid empty files on failure)
+                    var responseBody = mcpStringify({
+                        id: commandId,
+                        result: formattedResult
+                    });
                     var responseFile = new File(file.fsName + ".response");
                     responseFile.encoding = "UTF-8";
                     if (responseFile.open("w")) {
-                        responseFile.write(JSON.stringify({
-                            id: commandId,
-                            result: formattedResult
-                        }, null, 2));
+                        responseFile.write(responseBody);
                         responseFile.close();
                         
                         result.processed++;
@@ -125,29 +280,26 @@ function processCommands(debugMode) {
                         
                         // Mark as processed
                         processedCommands[file.name] = true;
-                        
-                        // Archive the processed file AFTER ensuring response is written
-                        // Add a small delay to ensure file system has flushed the response
-                        $.sleep(100);
                         archiveCommand(file);
                     } else {
                         throw new Error("Failed to open response file for writing");
                     }
                 } catch (execError) {
                     // Write error response
+                    var errorResponseBody = mcpStringify({
+                        id: commandId,
+                        result: {
+                            success: false,
+                            error: {
+                                message: execError.toString(),
+                                code: "EXECUTION_ERROR"
+                            }
+                        }
+                    });
                     var errorResponseFile = new File(file.fsName + ".response");
                     errorResponseFile.encoding = "UTF-8";
                     if (errorResponseFile.open("w")) {
-                        errorResponseFile.write(JSON.stringify({
-                            id: commandId,
-                            result: {
-                                success: false,
-                                error: {
-                                    message: execError.toString(),
-                                    code: "EXECUTION_ERROR"
-                                }
-                            }
-                        }, null, 2));
+                        errorResponseFile.write(errorResponseBody);
                         errorResponseFile.close();
                     }
                     
@@ -170,11 +322,9 @@ function processCommands(debugMode) {
                     
                     // Still mark as processed and archive even on error
                     processedCommands[file.name] = true;
-                    // Add delay here too to ensure error response is written
-                    $.sleep(100);
                     archiveCommand(file);
                 } finally {
-                    app.endUndoGroup();
+                    mcpStabilizeAfterCommand(script);
                 }
                 
             } catch (fileError) {
@@ -191,13 +341,24 @@ function processCommands(debugMode) {
                 }
             }
         }
+
+        if (result.processed > 0 || result.mutated > 0) {
+            mcpStabilizeAfterBatch(true);
+        } else {
+            mcpSleepBackgroundPoller();
+        }
         
     } catch (e) {
         result.success = false;
         result.error = e.toString();
+        try {
+            mcpStabilizeAfterBatch(result.mutated > 0);
+        } catch (stabilizeErr) {}
+    } finally {
+        $.global.mcpBridgeBusy = false;
     }
     
-    return JSON.stringify(result);
+    return mcpStringify(result);
 }
 
 /**
@@ -313,3 +474,8 @@ function createExampleComp() {
         return "Error: " + e.toString();
     }
 }
+
+$.global.mcpProcessCommands = processCommands;
+$.global.mcpHasPendingCommands = mcpHasPendingCommands;
+$.global.mcpInitializeMCPBridge = initializeMCPBridge;
+$.global.mcpSleepBackgroundPoller = mcpSleepBackgroundPoller;

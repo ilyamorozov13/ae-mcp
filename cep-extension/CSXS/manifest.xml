@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="11.0" ExtensionBundleId="com.aemcp.bridge" ExtensionBundleVersion="1.0.0" ExtensionBundleName="AE MCP Bridge" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ExtensionManifest Version="6.0" ExtensionBundleId="com.aemcp.bridge" ExtensionBundleVersion="1.0.1" ExtensionBundleName="AE MCP Bridge" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<ExtensionList>
-		<Extension Id="com.aemcp.bridge.panel" Version="1.0.0" />
+		<Extension Id="com.aemcp.bridge.panel" Version="1.0.1" />
 	</ExtensionList>
 	<ExecutionEnvironment>
 		<HostList>
-			<!-- After Effects - Support versions 2022 through 2025+ -->
+			<!-- After Effects 2022 through 2026+ (CEP 11 and CEP 12) -->
 			<Host Name="AEFT" Version="[22.0,99.9]" />
 		</HostList>
 		<LocaleList>
 			<Locale Code="All" />
 		</LocaleList>
 		<RequiredRuntimeList>
-			<RequiredRuntime Name="CSXS" Version="11.0" />
+			<RequiredRuntime Name="CSXS" Version="6.0" />
 		</RequiredRuntimeList>
 	</ExecutionEnvironment>
 	<DispatchInfoList>

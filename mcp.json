@@ -2,11 +2,11 @@
   "mcpServers": {
     "adobe-after-effects": {
       "command": "node",
-      "args": ["dist/index.js"],
+      "args": ["/ABSOLUTE/PATH/TO/ae-mcp/dist/stdio-server.js"],
       "env": {
-        "AE_MCP_PORT": "3000",
-        "AE_BRIDGE_PORT": "8080",
-        "LOG_LEVEL": "info"
+        "AE_USE_FILE_BRIDGE": "true",
+        "LOG_LEVEL": "info",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
       }
     }
   }
